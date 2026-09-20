@@ -1,0 +1,53 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+env:
+  NEXT_TELEMETRY_DISABLED: "1"
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+
+      - run: pnpm lint
+      - run: pnpm typecheck
+      - run: pnpm check:openapi
+      - run: pnpm test
+
+      - name: Start local Supabase (applies migrations)
+        run: pnpm db:start
+
+      - name: Write .env.local from the local stack
+        run: |
+          pnpm exec supabase status -o env > status.env
+          {
+            echo "SUPABASE_URL=$(grep '^API_URL=' status.env | cut -d= -f2- | tr -d '"')"
+            echo "SUPABASE_ANON_KEY=$(grep '^ANON_KEY=' status.env | cut -d= -f2- | tr -d '"')"
+            echo "SUPABASE_SERVICE_ROLE_KEY=$(grep '^SERVICE_ROLE_KEY=' status.env | cut -d= -f2- | tr -d '"')"
+            echo "HUB_SIGNING_SECRET=ci-outbound-secret"
+            echo "HUB_INBOUND_SECRET=ci-inbound-secret"
+            echo "DISPATCH_TOKEN=ci-dispatch-token"
+          } > .env.local
+          rm status.env
+
+      - name: Integration tests (seven mandated areas + platform contract)
+        run: pnpm test:integration
+
+      - run: pnpm build
+      - name: Client bundle must contain no server secret (PRD R-2)
+        run: pnpm scan:bundle
