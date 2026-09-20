@@ -1,10 +1,22 @@
 # A5 — Integration Evidence · Team 16 (Private Wellbeing Intake & Booking)
 
 **Team:** 16 — Wellbeing · **Pod:** 4 — Student Support
-**Deployed base URL:** `TODO https://<your-app>.vercel.app/api/v1`
-**Commit / deploy ID evidenced:** `TODO`
-**Evidence captured on:** `TODO YYYY-MM-DD` (all timestamps below in ISO-8601, UTC+7 unless marked)
-**Captured by:** `TODO names`
+**Deployed base URL:** `https://wellbeing-intake.vercel.app/api/v1` (Vercel, region `sin1`) · database: Supabase project `jtwrgfcmfghfklddyatv` (`ap-southeast-1`)
+**Commit / deploy ID evidenced:** `818596e` (reported by `GET /health` as `"version":"818596e"`)
+**Evidence captured on:** 2026-09-21 05:33–05:53 UTC+7. Timestamps below are ISO-8601 **UTC** (`Z`), exactly as captured; add 7 h for local time.
+**Captured by:** Teerapat Sukkasem (6731503015), Team 16
+
+> **Scope of this document.** Team 16 is paired with **one** partner: **Team 14 — Helpdesk**. Team 14
+> provides the Provider proof (§2). We are not paired with Team 01 (Identity) or Team 20 (Notification
+> Hub), so:
+>
+> - the webhook proofs (§3, §4, §6a) are real captures from the deployed system, **run by Team 16
+>   itself** against our built-in contract mock (`/api/v1/mock/hub`), which verifies the real HMAC
+>   signature, platform envelope and `data` allowlist over real HTTP. They prove our side of the
+>   contract; they are not a partner's confirmation, and we do not present them as one;
+> - the Consumer proof (§1) is out of scope — see §1.
+>
+> Raw captures: [`docs/evidence/`](evidence).
 
 > Every item below must be a real capture from the deployed system — nothing reconstructed, nothing mocked up after the fact. Anything still marked `TODO` is incomplete.
 
@@ -19,37 +31,28 @@
 
 | # | Proof | Partner team | Our PRD reference | Status |
 |---|-------|--------------|-------------------|--------|
-| 1 | Consumer | Team 01 — Student Identity | BR-26, FR-03 | TODO |
-| 2 | Provider | TODO (Team 23 Gateway / Team 13 or 14) | §11.1 `GET /services`, NFR-18 | TODO |
-| 3 | Webhook receiver | TODO (Team 20 recommended) | FR-24 (PRD revision 3), `POST /webhooks/notification-hub` | TODO |
-| 4 | Webhook sender | Team 20 — Notification Hub | FR-18, NFR-17, §11.5 | TODO |
-| 5 | Idempotency | — (ours) / same partner as §3 | K-17 `submission_key`; `eventId` | TODO |
-| 6 | Degradation | Team 20 and/or LLM | K-18/K-19, FR-23, BR-24 | TODO |
+| 1 | Consumer | — (not paired with Team 01) | BR-26, FR-03 | **Out of scope** — identity runs in fixture mode |
+| 2 | Provider | **Team 14 — Helpdesk** | §11.1 `GET /services`, NFR-18 | TODO — Team 14 runs the one-line `curl` in §2 and sends a screenshot |
+| 3 | Webhook receiver | — (self-run) | FR-24 (PRD revision 3), `POST /webhooks/notification-hub` | **Done (self-run)** |
+| 4 | Webhook sender | — (contract mock hub) | FR-18, NFR-17, §11.5 | **Done (mock hub)** |
+| 5 | Idempotency | — (ours) | K-17 `submission_key`; `eventId` | **Done** — 5a and 5b |
+| 6 | Degradation | — (contract mock hub / LLM) | K-18/K-19, FR-23, BR-24 | **6a done** · 6b fallback captured; AI mode not enabled (no approved key) |
 
 ---
 
 ## 1. Consumer Proof — we call a partner's API
 
-**What this proves:** Team 16 consumes another team's service. For us that is Team 01 Student Identity: the identity adapter verifies a Team 01 access token / fetches the required claims (BR-26).
+**Status: out of scope for this submission.** Our designed consumer integration is Team 01 — Student Identity: `src/lib/identity/adapter.ts` verifies a Team 01 access token against their published key set when `IDENTITY_MODE=campus` (BR-26). Team 16 is **not paired with Team 01**, so no real Team 01 token exists to capture, and we will not fabricate one.
+
+What is true of the deployed system instead:
 
 | Field | Value |
 |---|---|
-| Partner | Team 01 — Student Identity |
-| Partner URL called | `TODO https://<team01>/api/v1/...` (token verification key set, or profile-claims endpoint) |
-| Our calling code | `TODO path/to/identity-adapter.ts` |
-| Request timestamp | `TODO` |
-| Correlation ID | `TODO` |
-| HTTP status | `TODO` |
+| Identity mode deployed | `IDENTITY_MODE=fixture` — seeded demo users via Supabase Auth, which BR-26 permits when Team 01 is unavailable |
+| Adapter code | `src/lib/identity/adapter.ts` — the only module that verifies a credential. Switching to `campus` is configuration (`IDENTITY_JWKS_URL`, `IDENTITY_ISSUER`), not a code change (NFR-14) |
+| Honest limitation | The `campus` path has never been exercised against a real Team 01 token, and it is not covered by our automated tests. Only fixture mode is proven. |
 
-**Response body screenshot:** `TODO ![consumer-response](evidence/1-consumer-response.png)`
-
-Response body (text copy, tokens masked):
-
-```json
-TODO
-```
-
-**What we do with it:** only the identity reference and required contact/access claims are persisted; everything else is discarded (FR-03, BR-19). Show the resulting `User` row (columns only, demo user): `TODO screenshot`
+Our only partner, Team 14 — Helpdesk, exposes no API that this product needs to consume, so we did not invent a call to one for the sake of this section.
 
 ---
 
@@ -61,8 +64,9 @@ Recommended endpoint: `GET /api/v1/services` — public, contains only the seede
 
 | Field | Value |
 |---|---|
-| Our endpoint URL | `TODO https://<your-app>/api/v1/services` |
-| Calling partner | `TODO Team NN — name` |
+| Our endpoint URL | `https://wellbeing-intake.vercel.app/api/v1/services` |
+| Calling partner | Team 14 — Helpdesk (`TODO contact name`) |
+| Command for the partner | `curl -i https://wellbeing-intake.vercel.app/api/v1/services -H "X-Correlation-Id: team14-a5-0001"` |
 | Request timestamp | `TODO` |
 | Correlation ID | `TODO` (ask the partner to send one; it must match our log line) |
 | HTTP status returned | `TODO` |
@@ -79,56 +83,72 @@ TODO
 
 ## 3. Webhook Receiver — we receive a partner's event
 
-> **Implemented as FR-24 (PRD revision 3):** `POST /api/v1/webhooks/notification-hub` receives Notification Hub delivery receipts (`notification.delivered` / `notification.failed`) carrying only our opaque `reference`; the signature is verified over the raw body and consumption is idempotent on `eventId`. Still to do: agree the receipt event and the shared secret with Team 20 (or swap the source to a Team 01 event — the receiver is source-agnostic).
+> **Implemented as FR-24 (PRD revision 3):** `POST /api/v1/webhooks/notification-hub` receives Notification Hub delivery receipts (`notification.delivered` / `notification.failed`) carrying only our opaque `reference`; the signature is verified over the raw body and consumption is idempotent on `eventId`.
 
 | Field | Value |
 |---|---|
-| Sending partner | `TODO` |
-| Our receiver URL | `TODO https://<your-app>/api/v1/webhooks/<source>` |
-| Event type | `TODO` |
-| Received at | `TODO` |
-| `eventId` | `TODO` |
+| Sending partner | **Self-run by Team 16**, signed with our own `HUB_INBOUND_SECRET` (no Notification Hub partner — see Scope) |
+| Our receiver URL | `https://wellbeing-intake.vercel.app/api/v1/webhooks/notification-hub` |
+| Event type | `notification.delivered` |
+| Received at | `2026-09-20T22:33:14.979194Z` (database `received_at`) |
+| `eventId` | `26862025-bcd0-4611-b1f2-59ac0e5bd28d` |
 
 **Incoming payload** (exactly as received):
 
 ```json
-TODO
+{"eventId":"26862025-bcd0-4611-b1f2-59ac0e5bd28d","type":"notification.delivered","occurredAt":"2026-09-20T22:33:11Z","source":"notification-hub","subject":"reference:demo","data":{"reference":"5545081c-53bb-4e8c-9feb-3e8f9110e804"}}
 ```
 
-**Secret verification result** — show both outcomes:
+**Secret verification result** — both outcomes:
 
-| Case | Signature header | Result | HTTP status | Log line |
+| Case | Signature header | Result | HTTP status | Correlation ID · response |
 |---|---|---|---|---|
-| Valid signature | `TODO (masked)` | verified | `TODO 2xx` | `TODO` |
-| Tampered body or wrong secret | `TODO (masked)` | rejected | `TODO 401` | `TODO` |
+| Valid signature | `sha256=c82833…` (masked), `x-signature-timestamp: 1789943591` | verified | `200` | `a5-5b-del1` · `{"received":true,"duplicate":false}` |
+| Tampered body — one character changed after signing (`delivered` → `deliverex`), same signature | `sha256=c82833…` (masked) | rejected | `401` | `a5-3-tampered` · `{"error":"invalid_signature"}` |
 
-**Stored log** (DB row proving the event was recorded — `eventId`, type, received_at, processed_at): `TODO screenshot or query output`
+Vercel log lines: `TODO screenshot — Vercel → Logs → search "a5-5b-del1" and "a5-3-tampered"`
+
+**Stored log** — query output from the deployed database (`inbound_event`, filtered by that `eventId` — exactly one row):
+
+```json
+[{"event_id":"26862025-bcd0-4611-b1f2-59ac0e5bd28d","source":"notification-hub","type":"notification.delivered","reference":"5545081c-53bb-4e8c-9feb-3e8f9110e804","received_at":"2026-09-20T22:33:14.979194+00:00"}]
+```
 
 ---
 
 ## 4. Webhook Sender — we send an event to a partner
 
-**What this proves:** FR-18 / NFR-17 — a signed `appointment.reminder` reaches Team 20 in the platform envelope.
+**What this proves:** FR-18 / NFR-17 — a signed `appointment.reminder` reaches the Notification Hub target in the platform envelope (here: the contract mock hub).
 
 **Internal trigger action:** student books an appointment (`POST /api/v1/appointments`) → reminder reaches its lead time → dispatcher runs (`POST /api/v1/internal/events/dispatch`).
 
 | Step | Timestamp | Correlation ID | Evidence |
 |---|---|---|---|
-| Booking created | `TODO` | `TODO` | `TODO log line / screenshot` |
-| Outbox row inserted (K-18) | `TODO` | — | `TODO query output: event_id, type, attempts, next_attempt_at` |
-| Dispatcher delivered | `TODO` | `TODO` | `TODO log line` |
+**Receiver in this capture:** our contract mock hub (`HUB_WEBHOOK_URL=https://wellbeing-intake.vercel.app/api/v1/mock/hub`), which checks the HMAC signature, the platform envelope and the `data` allowlist before answering `202`. There is no Notification Hub partner — see Scope.
 
-**Outgoing payload** (must match PRD §11.5 — check: `data` has exactly 3 fields, no service, practitioner, reason, or triage level):
+| Step | Timestamp (UTC) | Correlation ID | Evidence |
+|---|---|---|---|
+| Booking created | `2026-09-20T22:50:24Z` | `a5-4-booking` | `201` `{"id":"ea92e2d9-0e5f-4457-93c2-fe644f32d41c","startAt":"2026-09-21T07:01:25.449+00:00","status":"confirmed"}` |
+| Outbox row inserted (K-18) | same transaction window | — | `event_id 6edcea0e-3b04-4834-9cd8-7d1f4296db13`, `type appointment.reminder`, `reference` = the appointment id |
+| Dispatcher delivered (inline, right after booking) | `2026-09-20T22:50:28.532846Z` | `a5-4-booking` | `attempts 1`, `last_status 202`; Vercel log line `TODO screenshot — search "a5-4-booking"` |
+
+**Outgoing payload** — `data` has exactly 3 fields; no service, practitioner, reason or triage level. The delivered row is nulled (K-19), so this is the `data` block of the identically-built reminder in §6a, read from the outbox while it was still pending:
 
 ```json
-TODO
+{ "message": "You have an appointment.", "reference": "fcbe8a2f-0847-4ac3-8a67-1a6f97d825c1", "appointmentAt": "2026-09-21T08:01:25Z" }
 ```
 
-Signature header sent: `TODO (masked)`
+with `subject` `student:3d77124f-5e2c-4c35-b7da-b8e74d1d0d06` (the recipient's opaque identity reference, a seeded demo user).
 
-**Partner response log:** HTTP status `TODO`, response body `TODO`, plus Team 20's own confirmation that they received and verified it: `TODO ![hub-confirmation](evidence/4-hub-confirmation.png)`
+Signature header sent: `X-Signature: sha256=<hex>` with `X-Signature-Timestamp` — the mock hub recomputed the HMAC over `"<timestamp>.<raw body>"` and accepted it (`202`). The header value itself is not logged by design, so it is not reproduced here.
 
-**After delivery:** outbox row shows `delivered_at` set and `subject` / `payload` nulled (K-19): `TODO query output`
+**Partner response log:** HTTP status `202` from the mock hub (it answers `401` on a bad signature, `400` on a bad envelope, `422` on `data` outside the contract).
+
+**After delivery** — outbox row, `delivered_at` set and `subject` / `payload` nulled (K-19):
+
+```json
+[{"event_id":"6edcea0e-3b04-4834-9cd8-7d1f4296db13","type":"appointment.reminder","reference":"ea92e2d9-0e5f-4457-93c2-fe644f32d41c","attempts":1,"last_status":202,"next_attempt_at":"2026-09-20T22:50:49.470929+00:00","delivered_at":"2026-09-20T22:50:28.532846+00:00","failed_at":null,"subject":null,"payload":null}]
+```
 
 ---
 
@@ -140,39 +160,56 @@ Two candidates; submit at least one, ideally both.
 
 | | Req 1 | Req 2 (replay) |
 |---|---|---|
-| Timestamp | `TODO` | `TODO` |
-| `submission_key` | `TODO` | same |
-| HTTP status | `TODO 201` | `TODO 200/201 — returns existing` |
-| Returned request id | `TODO` | **same id** |
+| Timestamp (UTC) | `2026-09-20T22:33:09Z` | `2026-09-20T22:33:10Z` |
+| Correlation ID | `a5-5a-req1` | `a5-5a-req2` |
+| `submission_key` | `19267117-022d-4128-a196-1348548429b3` | same |
+| HTTP status | `201 Created` | `200 OK` — returns the existing request |
+| Returned request id | `a9e01cc4-fac0-4851-9336-3007f9d0380d` | **same id** |
+| `created` flag | `true` | `false` |
 
-Payloads (use an obviously fake description such as `"demo-sentinel-A5"` — never realistic content):
+Payload — byte-identical for both requests (obviously fake description, as required):
 
 ```json
-TODO Req 1
+{"serviceId":"689dfeea-2a43-4aa9-87b4-55cfacaf29bc","structuredDescription":"demo-sentinel-A5","preferredTimes":"any","triageLevelId":1,"submissionKey":"19267117-022d-4128-a196-1348548429b3"}
 ```
 
+Response 1:
+
 ```json
-TODO Req 2
+{"id":"a9e01cc4-fac0-4851-9336-3007f9d0380d","status":"submitted","triageLevelId":1,"submittedAt":"2026-09-20T22:33:13.184206+00:00","created":true,"acute":false}
+```
+
+Response 2 — same `id`, same `submittedAt`, `created:false`:
+
+```json
+{"id":"a9e01cc4-fac0-4851-9336-3007f9d0380d","status":"submitted","triageLevelId":1,"submittedAt":"2026-09-20T22:33:13.184206+00:00","created":false,"acute":false}
 ```
 
 **DB proof of single creation:**
 
 ```sql
-select count(*) from request where submission_key = 'TODO';
+select count(*) from request where submission_key = '19267117-022d-4128-a196-1348548429b3';
 -- expected: 1
 ```
 
-`TODO screenshot of the result`
+Result from the deployed database (exact count via the REST API, `Prefer: count=exact`): `Content-Range: 0-0/1` → **1 row**.
+`TODO optional screenshot — run the SQL above in Supabase → SQL Editor`
 
 ### 5b. Inbound webhook delivered twice with the same `eventId` (from §3)
 
 | | Delivery 1 | Delivery 2 (duplicate) |
 |---|---|---|
-| Timestamp | `TODO` | `TODO` |
-| `eventId` | `TODO` | same |
-| HTTP status | `TODO 2xx` | `TODO 2xx (acknowledged, not reprocessed)` |
+| Timestamp (UTC) | `2026-09-20T22:33:11Z` | `2026-09-20T22:33:11Z` |
+| Correlation ID | `a5-5b-del1` | `a5-5b-del2` |
+| `eventId` | `26862025-bcd0-4611-b1f2-59ac0e5bd28d` | same (same body, same signature) |
+| HTTP status | `200` | `200` — acknowledged, not reprocessed |
+| Response | `{"received":true,"duplicate":false}` | `{"received":true,"duplicate":true}` |
 
-DB proof: one stored row for that `eventId`, one side effect. `TODO query output`
+DB proof — one stored row for that `eventId` (the primary key on `inbound_event.event_id` makes a second insert impossible):
+
+```json
+[{"event_id":"26862025-bcd0-4611-b1f2-59ac0e5bd28d","source":"notification-hub","type":"notification.delivered","reference":"5545081c-53bb-4e8c-9feb-3e8f9110e804","received_at":"2026-09-20T22:33:14.979194+00:00"}]
+```
 
 ---
 
@@ -180,41 +217,58 @@ DB proof: one stored row for that `eventId`, one side effect. `TODO query output
 
 ### 6a. Notification Hub unreachable (primary — partner dependency)
 
-**How it was broken:** `TODO` (e.g. Hub webhook URL pointed at a dead host / Team 20 took their endpoint down at an agreed time)
+**How it was broken:** the hub target was switched into outage mode — `PUT /api/v1/mock/hub {"fail":true}` with the machine credential — so every delivery received `503 {"error":"mock_hub_outage"}` over real HTTP.
 
-| Moment | Timestamp | Evidence |
+One event throughout: `event_id 7639a8f8-ba9a-426a-b960-ab9be25715b0`.
+
+| Moment | Timestamp (UTC) | Evidence |
 |---|---|---|
-| Breakage | `TODO` | `TODO first failed delivery log line` |
-| Booking during outage still succeeds | `TODO` | fallback JSON below |
-| Retries backing off (K-19) | `TODO … TODO … TODO` | `TODO outbox row: attempts 1→2→3, next_attempt_at growing, same event_id` |
-| Dependency restored | `TODO` | — |
-| Automatic recovery — delivered with no manual action | `TODO` | `TODO log line + outbox row delivered_at` |
+| Breakage | `2026-09-20T22:51:05Z` | cid `a5-6a-break` → `200 {"fail":true}` |
+| Booking during outage still succeeds | `2026-09-20T22:51:06Z` | cid `a5-6a-booking` → **`201`**, fallback JSON below |
+| Attempt 1 fails (inline) | `22:51:06Z` | outbox: `attempts 1`, `last_status 503`, `next_attempt_at 22:51:39Z` (**≈ 30 s later**), `delivered_at null` |
+| Attempt 2 fails (dispatcher) | `2026-09-20T22:51:49Z` | cid `a5-6a-retry2` → `{"enqueued":0,"claimed":1,"delivered":0,"retrying":1,"parked":0}`; outbox: `attempts 2`, `last_status 503`, `next_attempt_at 22:53:03Z` (**≈ 70 s later** — interval growing, same `event_id`) |
+| Dependency restored | `2026-09-20T22:52:17Z` | cid `a5-6a-restore` → `{"fail":false}` |
+| Automatic recovery | `2026-09-20T22:53:07Z` | cid `a5-6a-recover` → `{"enqueued":0,"claimed":1,"delivered":1,"retrying":0,"parked":0}`; outbox: `attempts 3`, `last_status 202`, `delivered_at 22:53:21Z`, `subject` and `payload` nulled |
 
-**Fallback JSON output** (the booking response returned to the student while the Hub was down):
+**What "automatic" means here:** no row was edited and nothing was re-queued by hand. Recovery was the ordinary dispatcher call picking up the row when its `next_attempt_at` came due. In production that call is made by the scheduled GitHub Actions workflow (`dispatch.yml`, every 3 hours); for this capture we invoked the same endpoint at the due times instead of waiting for the schedule.
+
+Pending outbox row during the outage (it still holds its payload — exactly the three allowed fields):
 
 ```json
-TODO
+[{"event_id":"7639a8f8-ba9a-426a-b960-ab9be25715b0","type":"appointment.reminder","attempts":1,"last_status":503,"next_attempt_at":"2026-09-20T22:51:39.850353+00:00","delivered_at":null,"failed_at":null,"subject":"student:3d77124f-5e2c-4c35-b7da-b8e74d1d0d06","payload":{"message": "You have an appointment.", "reference": "fcbe8a2f-0847-4ac3-8a67-1a6f97d825c1", "appointmentAt": "2026-09-21T08:01:25Z"}}]
+```
+
+The same row after recovery:
+
+```json
+[{"event_id":"7639a8f8-ba9a-426a-b960-ab9be25715b0","attempts":3,"last_status":202,"delivered_at":"2026-09-20T22:53:21.05775+00:00","failed_at":null,"subject":null,"payload":null}]
+```
+
+The appointment was never affected by the outage:
+
+```json
+[{"id":"fcbe8a2f-0847-4ac3-8a67-1a6f97d825c1","status":"confirmed","reminder_published_at":"2026-09-20T22:51:09.759946+00:00"}]
+```
+
+**Fallback JSON output** (the booking response returned to the student while the Hub was down — identical in shape to a normal booking; the student is never told, and never blocked, by a notification outage):
+
+```json
+{"id":"fcbe8a2f-0847-4ac3-8a67-1a6f97d825c1","startAt":"2026-09-21T08:01:25.449+00:00","status":"confirmed"}
 ```
 
 ### 6b. LLM unavailable (AI capability with deterministic fallback — FR-23, BR-24)
 
-**How it was broken:** `TODO` (AI flag off / invalid key / forced timeout)
+**How it was broken:** the AI capability is switched off on the deployment (`AI_FINDER_ENABLED=false`, no `LLM_API_KEY`), because the course has not yet approved a zero-cost model/key (PRD C-04, BR-24). The helper is designed to take this same fallback path on an LLM error, a 3-second timeout, invalid output or an exhausted daily budget.
 
-| Moment | Timestamp | Evidence |
+| Moment | Timestamp (UTC) | Evidence |
 |---|---|---|
-| Breakage | `TODO` | `TODO helper log: mode=fallback, outcome, latency` |
-| Recovery | `TODO` | `TODO helper log: mode=ai` |
+| AI unavailable — helper still answers | `2026-09-20T23:09:24Z` | cid `a5-6b-fallback` → `200`, `mode:"fallback"` (below) |
+| Recovery to `mode:"ai"` | **not captured** | Needs an approved key. We do not claim it. The automated suite (`tests/integration/platform.test.ts`, green in CI) covers three fallback triggers: AI switched off, AI on with no key, and daily budget exhausted. The timeout and invalid-output triggers are implemented but not yet tested. |
 
-**Fallback JSON output** of `POST /api/v1/finder/suggest` during the outage (shows `mode: "fallback"` and a ranked list of seeded service IDs):
-
-```json
-TODO
-```
-
-Same call after recovery (shows `mode: "ai"`):
+**Fallback JSON output** of `POST /api/v1/finder/suggest` with body `{"text":"trouble sleeping before exams"}` — a ranked list of seeded service IDs from the deterministic keyword matcher; no model-written text:
 
 ```json
-TODO
+{"mode":"fallback","serviceIds":["6c940476-f362-4090-b96a-40d75ed2564b"]}
 ```
 
 ---
@@ -223,9 +277,7 @@ TODO
 
 | Partner team | Contact | What they confirmed | Date |
 |---|---|---|---|
-| Team 01 | `TODO` | §1 | `TODO` |
-| `TODO` | `TODO` | §2 | `TODO` |
-| Team 20 | `TODO` | §3, §4, §6a | `TODO` |
+| Team 14 — Helpdesk | `TODO` | §2 | `TODO` |
 
 ---
 
@@ -234,7 +286,7 @@ TODO
 Set once (Git Bash). Use the deployed URL for the real submission; `http://localhost:3000` for a dry run.
 
 ```bash
-HOST=http://localhost:3000
+HOST=https://wellbeing-intake.vercel.app
 CID=a5-$(date +%Y%m%dT%H%M%S)            # one correlation id per proof ties screenshots to log lines
 login() { curl -s -X POST $HOST/api/v1/session -H 'content-type: application/json' -H "origin: $HOST" \
   -d "{\"email\":\"$1\",\"password\":\"demo-password-16\"}" | node -pe 'JSON.parse(require("fs").readFileSync(0)).accessToken'; }
