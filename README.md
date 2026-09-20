@@ -114,8 +114,17 @@ HMAC-SHA256 of `"<X-Signature-Timestamp>.<raw body>"`; timestamps older than 5 m
 ## AI capability
 
 The only AI in the product is the pre-login "help me choose" helper (FR-23). It sends the typed
-text plus the public catalogue to Claude and accepts back **only** a list of seeded service ids —
-model-written text never reaches a screen. It is off unless `AI_FINDER_ENABLED=true` and
-`LLM_API_KEY` is set; on any error, 3 s timeout, invalid output, or exhausted daily budget, the
-deterministic keyword matcher answers. Triage is never AI-assisted. `LLM_MODEL` defaults to
-`claude-opus-5`; set `claude-haiku-4-5` for a faster, cheaper model if your course approves it.
+text plus the public catalogue to a language model and accepts back **only** a list of seeded
+service ids — model-written text never reaches a screen. It is off unless `AI_FINDER_ENABLED=true`
+and `LLM_API_KEY` is set; on any error, 3 s timeout, invalid output, or exhausted daily budget, the
+deterministic keyword matcher answers. Triage is never AI-assisted.
+
+Two providers, chosen by `LLM_PROVIDER` (`src/lib/finder/ai.ts`); both go through the same validator:
+
+| `LLM_PROVIDER` | Provider | Default `LLM_MODEL` | Notes |
+| --- | --- | --- | --- |
+| `anthropic` (default) | Claude | `claude-opus-5` | Paid API. `claude-haiku-4-5` is faster and cheaper if your course approves it. |
+| `openai-compatible` | Groq (or any OpenAI-format API via `LLM_BASE_URL`) | `llama-3.1-8b-instant` | Free tier, no card — satisfies PRD C-04. Chosen for the deployment. |
+
+What leaves our server is the same for both and is asserted by `tests/unit/finder-ai.test.ts`: the
+typed text and the public catalogue — no cookie, token, identity or request field (NFR-10).
