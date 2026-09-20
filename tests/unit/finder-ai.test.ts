@@ -2,7 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { rankWithAi } from "@/lib/finder/ai";
 import type { CatalogueEntry } from "@/lib/finder/keywords";
 
-// The OpenAI-compatible AI path (Groq) with the network stubbed: every way the model can
+// The AI path (Groq) with the network stubbed: every way the model can
 // misbehave must end in null, so the keyword matcher answers instead (FR-23, BR-24).
 
 const catalogue: CatalogueEntry[] = [
@@ -21,7 +21,6 @@ function completion(content: unknown, status = 200): Response {
 const fetchMock = vi.fn<typeof fetch>();
 
 beforeEach(() => {
-  vi.stubEnv("LLM_PROVIDER", "openai-compatible");
   vi.stubEnv("LLM_API_KEY", "test-key");
   vi.stubEnv("LLM_BASE_URL", "");
   vi.stubEnv("LLM_MODEL", "");
@@ -35,7 +34,7 @@ afterEach(() => {
   vi.unstubAllGlobals();
 });
 
-describe("rankWithAi — OpenAI-compatible provider", () => {
+describe("rankWithAi", () => {
   it("returns the model's ranking when every id is in the catalogue", async () => {
     fetchMock.mockResolvedValue(completion('{"serviceIds":["advising","counselling"]}'));
     expect(await rankWithAi(SENTINEL, catalogue)).toEqual(["advising", "counselling"]);

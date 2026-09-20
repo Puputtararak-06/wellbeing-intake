@@ -77,22 +77,12 @@ export const env = {
   get llmApiKey() {
     return optional("LLM_API_KEY");
   },
-  /**
-   * "anthropic" (Claude, the default) or "openai-compatible" (any provider speaking the OpenAI
-   * chat-completions format — Groq's free tier satisfies the 0 THB, no-card constraint, C-04).
-   */
-  get llmProvider(): "anthropic" | "openai-compatible" {
-    return optional("LLM_PROVIDER", "anthropic") === "openai-compatible" ? "openai-compatible" : "anthropic";
-  },
+  // Groq (OpenAI-compatible API): free tier, no card — PRD C-04. `||` so an empty value means "default".
   get llmModel() {
-    // Override with LLM_MODEL (e.g. claude-haiku-4-5) if the course approves a cheaper/faster model.
-    return optional("LLM_MODEL") || (this.llmProvider === "openai-compatible" ? "llama-3.1-8b-instant" : "claude-opus-5");
+    return optional("LLM_MODEL") || "llama-3.1-8b-instant";
   },
   get llmBaseUrl() {
-    return (
-      optional("LLM_BASE_URL") ||
-      (this.llmProvider === "openai-compatible" ? "https://api.groq.com/openai/v1" : "https://api.anthropic.com")
-    );
+    return optional("LLM_BASE_URL") || "https://api.groq.com/openai/v1";
   },
   get aiDailyBudget() {
     return Number(optional("AI_DAILY_BUDGET", "200"));

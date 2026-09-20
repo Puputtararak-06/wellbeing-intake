@@ -27,7 +27,7 @@ Next.js Route Handlers — /api/v1/* — the ONLY data path
    │  src/lib/http.ts       correlation id, default-deny roles, identical 404, origin check, content-free logs
    │  src/lib/identity/     the ONLY module that verifies a credential (fixture | campus)
    │  src/lib/events/       platform envelope, data allowlist, HMAC signing, outbox dispatcher
-   │  src/lib/finder/       "help me choose": Claude ranking + deterministic keyword fallback
+   │  src/lib/finder/       "help me choose": LLM ranking (Groq) + deterministic keyword fallback
    ▼
 Supabase Postgres — deny-all RLS (zero policies); invariants live in the database:
    partial unique indexes (no double booking) · plpgsql transactions (booking, cancel,
@@ -119,12 +119,10 @@ service ids — model-written text never reaches a screen. It is off unless `AI_
 and `LLM_API_KEY` is set; on any error, 3 s timeout, invalid output, or exhausted daily budget, the
 deterministic keyword matcher answers. Triage is never AI-assisted.
 
-Two providers, chosen by `LLM_PROVIDER` (`src/lib/finder/ai.ts`); both go through the same validator:
+**Provider: Groq** (`src/lib/finder/ai.ts`), through its OpenAI-compatible API — chosen because its
+free tier needs no card, which the 0 THB constraint requires (PRD C-04). `LLM_MODEL` defaults to
+`llama-3.1-8b-instant`: the task is picking up to three ids out of four, so a small fast model fits
+the 3 s budget. `LLM_BASE_URL` can point at any other API of the same format without a code change.
 
-| `LLM_PROVIDER` | Provider | Default `LLM_MODEL` | Notes |
-| --- | --- | --- | --- |
-| `anthropic` (default) | Claude | `claude-opus-5` | Paid API. `claude-haiku-4-5` is faster and cheaper if your course approves it. |
-| `openai-compatible` | Groq (or any OpenAI-format API via `LLM_BASE_URL`) | `llama-3.1-8b-instant` | Free tier, no card — satisfies PRD C-04. Chosen for the deployment. |
-
-What leaves our server is the same for both and is asserted by `tests/unit/finder-ai.test.ts`: the
+What leaves our server is asserted by `tests/unit/finder-ai.test.ts`: the
 typed text and the public catalogue — no cookie, token, identity or request field (NFR-10).
