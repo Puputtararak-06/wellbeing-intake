@@ -11,6 +11,7 @@ always one step away, and every view of request content is audited.
 - Product requirements: [`docs/PRD.md`](docs/PRD.md)
 - API contract (OpenAPI 3.1): [`openapi.yaml`](openapi.yaml)
 - Operations: [`RUNBOOK.md`](RUNBOOK.md)
+- A3 data and query design: [`docs/A3-Team16-Data-and-Query-Design.md`](docs/A3-Team16-Data-and-Query-Design.md) (PDF: `pnpm docs:pdf docs/A3-Team16-Data-and-Query-Design.md`)
 - A5 integration evidence template: [`docs/A5-Team16-Integration-Evidence.md`](docs/A5-Team16-Integration-Evidence.md)
 
 ## Stack
