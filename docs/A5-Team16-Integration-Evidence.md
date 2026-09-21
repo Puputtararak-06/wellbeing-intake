@@ -34,7 +34,7 @@
 | # | Proof | Partner team | Our PRD reference | Status |
 |---|-------|--------------|-------------------|--------|
 | 1 | Consumer | — (not paired with Team 01) | BR-26, FR-03 | **Out of scope** — identity runs in fixture mode |
-| 2 | Provider | **Team 14 — Helpdesk** | §11.1 `GET /services`, NFR-18 | **Done** — provider log captured for `team14-a5-0001`; Team 14's own screenshot and contact name still to add |
+| 2 | Provider | **Team 14 — Helpdesk** | §11.1 `GET /services`, NFR-18 | **Done** — our server log and Team 14's Postman capture share `team14-a5-0001` |
 | 3 | Webhook receiver | — (self-run) | FR-24 (PRD revision 3), `POST /webhooks/notification-hub` | **Done (self-run)** |
 | 4 | Webhook sender | — (contract mock hub) | FR-18, NFR-17, §11.5 | **Done (mock hub)** |
 | 5 | Idempotency | — (ours) | K-17 `submission_key`; `eventId` | **Done** — 5a and 5b |
@@ -88,7 +88,20 @@ Endpoint: `GET /api/v1/services` — public, returns only the seeded service cat
 
 The log search for `team14-a5-0001` returns exactly one request. Team 14's optional labels `team14-a5-0002` (health check) and `team14-a5-0003` (recovery call) were searched for in the same hour and returned no request: they were not sent, so nothing is claimed for them.
 
-**Partner confirmation** (Team 14's own screenshot of the same request — their request, the `200` response, and `X-Correlation-Id: team14-a5-0001` echoed back): `TODO ![partner-confirmation](evidence/2-partner-confirmation.png)`
+**Partner confirmation** — Team 14's own Postman capture of the same request, supplied by Team 14:
+
+| What their screenshot shows | Matches our log |
+|---|---|
+| `GET {{wellbeing_base}}/services`, with `wellbeing_base = https://wellbeing-intake.vercel.app/api/v1` (their Postman environment, second image) | path `/api/v1/services`, method `GET` |
+| Request header `X-Correlation-Id: team14-a5-0001` | `cid: "team14-a5-0001"` |
+| `200 OK`, 1.4 KB, in 1.44 s | `status: 200`; `User-Agent: PostmanRuntime/7.56.1` |
+| Body: our catalogue, starting with `counselling` (`id 689dfeea-…`) then `health-clinic` | the seeded services, ordered by name |
+
+Their capture shows the request header they sent rather than the response headers; the time of the call is taken from our server log (`2026-09-21T11:35:49.718Z`), where the search for that label returns this one request only.
+
+![Team 14's Postman: GET services with X-Correlation-Id team14-a5-0001, 200 OK, the service catalogue in the body](evidence/2-partner-postman-team14-a5-0001.png)
+
+![Team 14's Postman environment: wellbeing_base points at our deployed API, helpdesk_base at theirs](evidence/2-partner-postman-environment.png)
 
 ### 2b. Their deployed backend calling us — not just a manual test
 
