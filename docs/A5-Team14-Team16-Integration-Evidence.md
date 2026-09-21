@@ -7,7 +7,7 @@
 | Role in this pairing | **Consumer** | **Provider** |
 | Deployed base URL | `https://helpdesk-api.team-helpdesk.workers.dev` (Cloudflare Workers) | `https://wellbeing-intake.vercel.app/api/v1` (Vercel, region `sin1`; Supabase Postgres, Singapore) |
 | Source | Team 14's repository | <https://github.com/TEERAPAT-SUKKASEM/wellbeing-intake> |
-| Contact | `TODO Team 14 contact` | Teerapat Sukkasem (6731503015) |
+| Contact | Pupattararak Masomjit (6731503115) | Teerapat Sukkasem (6731503015) |
 
 **Contract:** [`integration/team14/Team14-Integration-Contract.md`](../integration/team14/Team14-Integration-Contract.md) v1.2 — `GET /services` and `GET /health`, public, read-only.
 **Evidence captured:** 2026-09-21. Timestamps are ISO-8601 **UTC** (`Z`); add 7 h for local time (UTC+7).
@@ -297,6 +297,6 @@ Both teams confirm that the evidence above attributed to their own system is a r
 | Team | Name | Confirms | Date |
 | --- | --- | --- | --- |
 | Team 16 — Wellbeing | Teerapat Sukkasem | §2, and Team 16's parts of §3–§6 | 2026-09-21 |
-| Team 14 — Helpdesk | `TODO` | §1, and Team 14's parts of §5–§6 | `TODO` |
+| Team 14 — Helpdesk | Pupattararak Masomjit (6731503115) | §1, and Team 14's parts of §5–§6 | 2026-09-21 |
 
 Team 16's full evidence, with raw captures: [`A5-Team16-Integration-Evidence.md`](A5-Team16-Integration-Evidence.md) and [`evidence/`](evidence).

@@ -20,7 +20,7 @@ Team 16: Dechawat Wetprasit (6731503011) · Thiraphot Punkham (6731503014) · Te
 If he is unavailable on demo day nobody else can change an environment variable or redeploy — add a
 second member to the Supabase organisation (free) and as a GitHub collaborator before the demo.
 
-Partner contact: **Team 14 — Helpdesk** `TODO contact name` (they consume `GET /api/v1/services`).
+Partner contact: **Team 14 — Helpdesk** — Pupattararak Masomjit (6731503115) (they consume `GET /api/v1/services`).
 We are not paired with Team 01 Identity, Team 20 Notification Hub or Team 23 Gateway: identity runs
 in fixture mode and webhooks go to the built-in contract mock.
 

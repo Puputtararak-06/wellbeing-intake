@@ -1,6 +1,6 @@
 # API Contract — Wellbeing (Team 16) → Helpdesk (Team 14)
 
-**For:** A5 cross-team integration · **Contract version:** 1.2 (2026-09-21) — 1.1 added §2.1 (fit with the Helpdesk PRD); 1.2 adds the evidence labels and the 405/404 note in §6. The API itself is unchanged since 1.0 · **Status:** proposed by Team 16, awaiting Team 14 review
+**For:** A5 cross-team integration · **Contract version:** 1.2 (2026-09-21) — 1.1 added §2.1 (fit with the Helpdesk PRD); 1.2 adds the evidence labels and the 405/404 note in §6. The API itself is unchanged since 1.0 · **Status:** agreed and locked by both teams on 2026-09-21
 
 This answers every item in Team 14's *A5 Integration Preparation* checklist (§18). Every value below
 was verified against the live system — nothing here is planned or assumed. Items that do not exist
@@ -290,4 +290,4 @@ provider's side, that your request arrived — for your **Consumer proof**.
 | Team | Name | Agreed on |
 | --- | --- | --- |
 | Team 16 — Wellbeing | Teerapat Sukkasem | 2026-09-21 |
-| Team 14 — Helpdesk | `TODO` | `TODO` |
+| Team 14 — Helpdesk | Pupattararak Masomjit (6731503115) | 2026-09-21 |

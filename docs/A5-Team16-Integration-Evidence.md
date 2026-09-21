@@ -69,7 +69,7 @@ Endpoint: `GET /api/v1/services` — public, returns only the seeded service cat
 | Field | Value |
 |---|---|
 | Our endpoint URL | `https://wellbeing-intake.vercel.app/api/v1/services` |
-| Calling partner | Team 14 — Helpdesk (`TODO contact name`) |
+| Calling partner | Team 14 — Helpdesk · contact: Pupattararak Masomjit (6731503115) |
 | Partner's client | Postman (`User-Agent: PostmanRuntime/7.56.1`) |
 | Request timestamp | `2026-09-21T11:35:49.718Z` — 18:35:48 UTC+7 (server time, from our log) |
 | Correlation ID | `team14-a5-0001` — sent by Team 14, echoed in our response, written to our log |
@@ -384,7 +384,7 @@ In both modes the response carries **only seeded service IDs** — model-written
 
 | Partner team | Contact | What they confirmed | Date |
 |---|---|---|---|
-| Team 14 — Helpdesk | `TODO` | §2 | `TODO` |
+| Team 14 — Helpdesk | Pupattararak Masomjit (6731503115) | §2 | 2026-09-21 |
 
 ---
 
