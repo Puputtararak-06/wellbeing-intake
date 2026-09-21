@@ -62,8 +62,9 @@ const html = `<!doctype html>
   code { font: 8.5pt Consolas, "Cascadia Mono", monospace; background: #f1f3f5; padding: 0 2pt; border-radius: 2pt; }
   pre { background: #f6f8fa; border: 1px solid #dde1e5; border-radius: 3pt; padding: 6pt 8pt; white-space: pre-wrap; word-break: break-word; break-inside: avoid; }
   pre code { background: none; padding: 0; }
-  img { max-width: 100%; border: 1px solid #c8c8c8; break-inside: avoid; }
-  p:has(+ p > img) { break-after: avoid; }
+  /* max-height keeps a tall screenshot on the same page as its caption */
+  img { max-width: 100%; max-height: 175mm; border: 1px solid #c8c8c8; break-inside: avoid; }
+  p:not(:has(img)):has(+ p > img) { break-after: avoid; } /* a caption stays with its image; images are not chained together */
   blockquote { margin: 8pt 0; padding: 2pt 10pt; border-left: 3px solid #999; color: #444; }
   /* A diagram gets its own page, and the heading above it comes along instead of being orphaned. */
   .mermaid { break-before: page; break-after: page; text-align: center; }
