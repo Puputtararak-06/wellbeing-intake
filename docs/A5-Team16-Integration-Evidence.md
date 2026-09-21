@@ -24,10 +24,10 @@
 
 ## Redaction rules (apply to every screenshot and log)
 
-- [ ] Seeded demo users only — no real student record anywhere (platform PRD §6, BR-18).
-- [ ] Secrets masked: signing secret, machine credential, service-role key, LLM key, bearer tokens (show first 6 characters at most).
-- [ ] No request content (description, free text, preferred times) and no triage level in any capture (NFR-07). Use metadata-only views.
-- [ ] Each capture shows its correlation ID (`X-Correlation-Id`) so the log lines and screenshots can be tied together.
+- [x] Seeded demo users only — no real student record anywhere (platform PRD §6, BR-18).
+- [x] Secrets masked: signing secret, machine credential, service-role key, LLM key, bearer tokens (show first 6 characters at most).
+- [x] No request content (description, free text, preferred times) and no triage level in any capture (NFR-07). Use metadata-only views. *One deliberate exception: §5a shows the request it replays, as this template asks — its description is the obviously fake sentinel `demo-sentinel-A5`, with the routine level.*
+- [x] Each capture shows its correlation ID (`X-Correlation-Id`) so the log lines and screenshots can be tied together.
 
 ## Summary
 
