@@ -87,7 +87,7 @@ describe("rankWithAi", () => {
 
     const body = JSON.parse(init!.body as string);
     expect(Object.keys(body).sort()).toEqual(["max_tokens", "messages", "model", "response_format", "temperature"]);
-    expect(body.model).toBe("llama-3.1-8b-instant");
+    expect(body.model).toBe("openai/gpt-oss-20b");
     expect(body.messages.map((m: { role: string }) => m.role)).toEqual(["system", "user"]);
     expect(body.messages[0].content).not.toContain(SENTINEL); // visitor text never enters the system prompt
     expect(body.messages[1].content).toBe(

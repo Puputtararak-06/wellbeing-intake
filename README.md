@@ -121,7 +121,7 @@ deterministic keyword matcher answers. Triage is never AI-assisted.
 
 **Provider: Groq** (`src/lib/finder/ai.ts`), through its OpenAI-compatible API — chosen because its
 free tier needs no card, which the 0 THB constraint requires (PRD C-04). `LLM_MODEL` defaults to
-`llama-3.1-8b-instant`: the task is picking up to three ids out of four, so a small fast model fits
+`openai/gpt-oss-20b`: the task is picking up to three ids out of four, so a small fast model fits
 the 3 s budget. `LLM_BASE_URL` can point at any other API of the same format without a code change.
 
 What leaves our server is asserted by `tests/unit/finder-ai.test.ts`: the

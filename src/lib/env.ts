@@ -79,7 +79,7 @@ export const env = {
   },
   // Groq (OpenAI-compatible API): free tier, no card — PRD C-04. `||` so an empty value means "default".
   get llmModel() {
-    return optional("LLM_MODEL") || "llama-3.1-8b-instant";
+    return optional("LLM_MODEL") || "openai/gpt-oss-20b";
   },
   get llmBaseUrl() {
     return optional("LLM_BASE_URL") || "https://api.groq.com/openai/v1";

@@ -40,7 +40,8 @@ export async function rankWithAi(text: string, catalogue: CatalogueEntry[]): Pro
       body: JSON.stringify({
         model: env.llmModel,
         temperature: 0,
-        max_tokens: 200,
+        // A reasoning model spends tokens thinking before it answers; 200 could cut the JSON off.
+        max_tokens: 1024,
         response_format: { type: "json_object" },
         messages: [
           { role: "system", content: SYSTEM },
