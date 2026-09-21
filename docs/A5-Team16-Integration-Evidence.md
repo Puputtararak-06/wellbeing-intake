@@ -2,7 +2,7 @@
 
 **Team:** 16 — Wellbeing · **Pod:** 4 — Student Support
 **Deployed base URL:** `https://wellbeing-intake.vercel.app/api/v1` (Vercel, region `sin1`) · database: Supabase project `jtwrgfcmfghfklddyatv` (`ap-southeast-1`)
-**Commit / deploy ID evidenced:** `818596e` for §3–§6a and `73b18dc` for §6b (each reported by `GET /health` as `"version"` at capture time)
+**Commit / deploy ID evidenced:** `818596e` for §5a and §6a, `73b18dc` for §6b, `27d4920` for §3, §4 and §5b (each reported by `GET /health` as `"version"` at capture time)
 **Evidence captured on:** 2026-09-21 05:33–07:35 UTC+7. Timestamps below are ISO-8601 **UTC** (`Z`), exactly as captured; add 7 h for local time.
 **Captured by:** Teerapat Sukkasem (6731503015), Team 16
 
@@ -15,6 +15,8 @@
 >   signature, platform envelope and `data` allowlist over real HTTP. They prove our side of the
 >   contract; they are not a partner's confirmation, and we do not present them as one;
 > - the Consumer proof (§1) is out of scope — see §1.
+>
+> §3, §4 and §5b were first captured at 05:33–05:50 UTC+7 and **re-run at 07:56** with identical results, because Vercel's Hobby plan keeps server logs for about one hour and the first run's log lines had expired before they could be screenshotted. Both runs are kept in the raw captures.
 >
 > Raw captures: [`docs/evidence/`](evidence).
 
@@ -90,28 +92,40 @@ TODO
 | Sending partner | **Self-run by Team 16**, signed with our own `HUB_INBOUND_SECRET` (no Notification Hub partner — see Scope) |
 | Our receiver URL | `https://wellbeing-intake.vercel.app/api/v1/webhooks/notification-hub` |
 | Event type | `notification.delivered` |
-| Received at | `2026-09-20T22:33:14.979194Z` (database `received_at`) |
-| `eventId` | `26862025-bcd0-4611-b1f2-59ac0e5bd28d` |
+| Received at | `2026-09-21T00:56:20.136655Z` (database `received_at`) |
+| `eventId` | `d277ab91-6e47-40d8-9c63-d65d8e46dc71` |
 
 **Incoming payload** (exactly as received):
 
 ```json
-{"eventId":"26862025-bcd0-4611-b1f2-59ac0e5bd28d","type":"notification.delivered","occurredAt":"2026-09-20T22:33:11Z","source":"notification-hub","subject":"reference:demo","data":{"reference":"5545081c-53bb-4e8c-9feb-3e8f9110e804"}}
+{"eventId":"d277ab91-6e47-40d8-9c63-d65d8e46dc71","type":"notification.delivered","occurredAt":"2026-09-21T00:56:16Z","source":"notification-hub","subject":"reference:demo","data":{"reference":"02193392-d6f3-48fc-af68-d887ddaa7349"}}
 ```
 
 **Secret verification result** — both outcomes:
 
 | Case | Signature header | Result | HTTP status | Correlation ID · response |
 |---|---|---|---|---|
-| Valid signature | `sha256=c82833…` (masked), `x-signature-timestamp: 1789943591` | verified | `200` | `a5-5b-del1` · `{"received":true,"duplicate":false}` |
-| Tampered body — one character changed after signing (`delivered` → `deliverex`), same signature | `sha256=c82833…` (masked) | rejected | `401` | `a5-3-tampered` · `{"error":"invalid_signature"}` |
+| Valid signature | `sha256=a71e8c…` (masked), `x-signature-timestamp: 1789952176` | verified | `200` | `a5r-3-valid` · `{"received":true,"duplicate":false}` |
+| Tampered body — one character changed after signing (`delivered` → `deliverex`), same signature | `sha256=a71e8c…` (masked) | rejected | `401` | `a5r-3-tampered` · `{"error":"invalid_signature"}` |
 
-Vercel log lines: `TODO screenshot — Vercel → Logs → search "a5-5b-del1" and "a5-3-tampered"`
+**Server-side log lines** (Vercel → Logs, production, region `sin1`) — our structured `kind:"webhook_in"` line for each delivery:
+
+| cid | Server time (UTC) | `signature` | `status` | `duplicate` | Work done |
+|---|---|---|---|---|---|
+| `a5r-3-valid` | `2026-09-21T00:56:20.217Z` | `verified` | 200 | `false` | one database write (External APIs: `POST …supabase.co`) |
+| `a5r-3-duplicate` | `2026-09-21T00:56:20.453Z` | `verified` | 200 | `true` | recognised as already seen |
+| `a5r-3-tampered` | `2026-09-21T00:56:20.658Z` | `rejected`, reason `mismatch` | 401 | — | **"No outgoing requests"** — rejected in 9 ms, before touching the database |
+
+![Vercel log, cid a5r-3-valid: signature verified, status 200, duplicate false](evidence/3-log-valid.png)
+
+![Vercel log, cid a5r-3-duplicate: signature verified, status 200, duplicate true](evidence/3-log-duplicate.png)
+
+![Vercel log, cid a5r-3-tampered: signature rejected, reason mismatch, status 401, no outgoing requests](evidence/3-log-tampered.png)
 
 **Stored log** — query output from the deployed database (`inbound_event`, filtered by that `eventId` — exactly one row):
 
 ```json
-[{"event_id":"26862025-bcd0-4611-b1f2-59ac0e5bd28d","source":"notification-hub","type":"notification.delivered","reference":"5545081c-53bb-4e8c-9feb-3e8f9110e804","received_at":"2026-09-20T22:33:14.979194+00:00"}]
+[{"event_id":"d277ab91-6e47-40d8-9c63-d65d8e46dc71","source":"notification-hub","type":"notification.delivered","reference":"02193392-d6f3-48fc-af68-d887ddaa7349","received_at":"2026-09-21T00:56:20.136655+00:00"}]
 ```
 
 ---
@@ -128,9 +142,9 @@ Vercel log lines: `TODO screenshot — Vercel → Logs → search "a5-5b-del1" a
 
 | Step | Timestamp (UTC) | Correlation ID | Evidence |
 |---|---|---|---|
-| Booking created | `2026-09-20T22:50:24Z` | `a5-4-booking` | `201` `{"id":"ea92e2d9-0e5f-4457-93c2-fe644f32d41c","startAt":"2026-09-21T07:01:25.449+00:00","status":"confirmed"}` |
-| Outbox row inserted (K-18) | same transaction window | — | `event_id 6edcea0e-3b04-4834-9cd8-7d1f4296db13`, `type appointment.reminder`, `reference` = the appointment id |
-| Dispatcher delivered (inline, right after booking) | `2026-09-20T22:50:28.532846Z` | `a5-4-booking` | `attempts 1`, `last_status 202`; Vercel log line `TODO screenshot — search "a5-4-booking"` |
+| Booking created | `2026-09-21T00:56:24Z` | `a5r-4-booking` | `201` `{"id":"65132edf-0d2d-4882-9a4e-c340fec2f2b5","startAt":"2026-09-21T06:56:19.269+00:00","status":"confirmed"}` |
+| Outbox row inserted (K-18) | same transaction window | — | `event_id 6e6f17f3-9038-449b-b757-9220dfe9ef77`, `type appointment.reminder`, `reference` = the appointment id |
+| Dispatcher delivered (inline, right after booking) | `2026-09-21T00:56:24.113613Z` | `a5r-4-booking` | `attempts 1`, `last_status 202`; log screenshots below |
 
 **Outgoing payload** — `data` has exactly 3 fields; no service, practitioner, reason or triage level. The delivered row is nulled (K-19), so this is the `data` block of the identically-built reminder in §6a, read from the outbox while it was still pending:
 
@@ -144,10 +158,21 @@ Signature header sent: `X-Signature: sha256=<hex>` with `X-Signature-Timestamp` 
 
 **Partner response log:** HTTP status `202` from the mock hub (it answers `401` on a bad signature, `400` on a bad envelope, `422` on `data` outside the contract).
 
+**Server-side log lines — both ends of the delivery, same `eventId` `6e6f17f3-9038-449b-b757-9220dfe9ef77`** (Vercel → Logs, search `a5r-4-booking`; the correlation ID is propagated from the booking request onto the outbound webhook):
+
+| Side | Request | Server time (UTC) | Log line |
+|---|---|---|---|
+| Sender | `POST /api/v1/appointments` → 201 | `2026-09-21T00:56:24.170Z` | `kind:"webhook"`, `type:"appointment.reminder"`, `attempt:1`, `status:202`, **`outcome:"delivered"`**; External APIs shows the outbound `POST wellbeing-intake.vercel.app/api/v1/mock/hub` |
+| Receiver | `POST /api/v1/mock/hub` → 202, user agent `node` | `2026-09-21T00:56:24.139Z` | `svc:"mock-hub"`, same `eventId`, **`accepted:true`** — logged only after the HMAC signature, the envelope and the `data` allowlist all passed |
+
+![Vercel log, sender side: booking 201 and kind webhook line with outcome delivered](evidence/4-log-booking-sender.png)
+
+![Vercel log, receiver side: mock hub accepted the same eventId with status 202](evidence/4-log-mock-hub-receiver.png)
+
 **After delivery** — outbox row, `delivered_at` set and `subject` / `payload` nulled (K-19):
 
 ```json
-[{"event_id":"6edcea0e-3b04-4834-9cd8-7d1f4296db13","type":"appointment.reminder","reference":"ea92e2d9-0e5f-4457-93c2-fe644f32d41c","attempts":1,"last_status":202,"next_attempt_at":"2026-09-20T22:50:49.470929+00:00","delivered_at":"2026-09-20T22:50:28.532846+00:00","failed_at":null,"subject":null,"payload":null}]
+[{"event_id":"6e6f17f3-9038-449b-b757-9220dfe9ef77","type":"appointment.reminder","reference":"65132edf-0d2d-4882-9a4e-c340fec2f2b5","attempts":1,"last_status":202,"next_attempt_at":"2026-09-21T00:56:45.051186+00:00","delivered_at":"2026-09-21T00:56:24.113613+00:00","failed_at":null,"subject":null,"payload":null}]
 ```
 
 ---
@@ -193,22 +218,22 @@ select count(*) from request where submission_key = '19267117-022d-4128-a196-134
 ```
 
 Result from the deployed database (exact count via the REST API, `Prefer: count=exact`): `Content-Range: 0-0/1` → **1 row**.
-`TODO optional screenshot — run the SQL above in Supabase → SQL Editor`
+(To reproduce: run the SQL above in Supabase → SQL Editor.)
 
 ### 5b. Inbound webhook delivered twice with the same `eventId` (from §3)
 
 | | Delivery 1 | Delivery 2 (duplicate) |
 |---|---|---|
-| Timestamp (UTC) | `2026-09-20T22:33:11Z` | `2026-09-20T22:33:11Z` |
-| Correlation ID | `a5-5b-del1` | `a5-5b-del2` |
-| `eventId` | `26862025-bcd0-4611-b1f2-59ac0e5bd28d` | same (same body, same signature) |
+| Timestamp (UTC, server) | `2026-09-21T00:56:20Z` | `2026-09-21T00:56:20Z` |
+| Correlation ID | `a5r-3-valid` | `a5r-3-duplicate` |
+| `eventId` | `d277ab91-6e47-40d8-9c63-d65d8e46dc71` | same (same body, same signature) |
 | HTTP status | `200` | `200` — acknowledged, not reprocessed |
 | Response | `{"received":true,"duplicate":false}` | `{"received":true,"duplicate":true}` |
 
 DB proof — one stored row for that `eventId` (the primary key on `inbound_event.event_id` makes a second insert impossible):
 
 ```json
-[{"event_id":"26862025-bcd0-4611-b1f2-59ac0e5bd28d","source":"notification-hub","type":"notification.delivered","reference":"5545081c-53bb-4e8c-9feb-3e8f9110e804","received_at":"2026-09-20T22:33:14.979194+00:00"}]
+[{"event_id":"d277ab91-6e47-40d8-9c63-d65d8e46dc71","source":"notification-hub","type":"notification.delivered","reference":"02193392-d6f3-48fc-af68-d887ddaa7349","received_at":"2026-09-21T00:56:20.136655+00:00"}]
 ```
 
 ---
