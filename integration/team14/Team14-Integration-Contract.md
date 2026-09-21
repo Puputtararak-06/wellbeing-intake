@@ -1,6 +1,6 @@
 # API Contract — Wellbeing (Team 16) → Helpdesk (Team 14)
 
-**For:** A5 cross-team integration · **Contract version:** 1.0 (2026-09-21) · **Status:** proposed by Team 16, awaiting Team 14 review
+**For:** A5 cross-team integration · **Contract version:** 1.1 (2026-09-21) — adds §2.1 after reading the Helpdesk PRD v1.0; the API itself is unchanged · **Status:** proposed by Team 16, awaiting Team 14 review
 
 This answers every item in Team 14's *A5 Integration Preparation* checklist (§18). Every value below
 was verified against the live system — nothing here is planned or assumed. Items that do not exist
@@ -49,6 +49,47 @@ wellbeing case #123"* — that reference would itself be a disclosure. Please do
 Suggested use: when a Helpdesk ticket is about stress, health, injury or money worries, show the
 student the matching Wellbeing service and link them to <https://wellbeing-intake.vercel.app>.
 The student then contacts Wellbeing themselves, privately.
+
+### 2.1 How this fits the Helpdesk PRD
+
+Read against your PRD v1.0, the integration slots into things you already have:
+
+| In your PRD | With Wellbeing |
+| --- | --- |
+| §8.3 — AI triage proposes a **Route** (your example: `Route: Maintenance`) | Add **`Route: Wellbeing`** for tickets about stress, low mood, illness, injury, sleep or money worries |
+| §8.2 — AI input "available routing/assignment options" | Our four services (`name` + `whatFor`) are those options. Validate the AI's choice against our `slug` list, exactly as §8.6 requires for categories |
+| §8.5 — deterministic fallback | Works unchanged: match your keyword rules to a `slug`. If *we* are unavailable, fall back to a plain "Wellbeing" route with a link to our site |
+| §6.1 / BR-04 — store only `maintenance_work_order_id`, never copy the record | Same pattern: store only **`wellbeing_service_slug`**. Fetch `name` / `whatFor` from us when you display it |
+| §12 — server-side API logic (Next.js Route Handlers) | Call us from a Route Handler. `wellbeing-client.mjs` in this bundle drops straight in |
+| §6.3 — you *consume* `maintenance.status_changed` | **No equivalent from us.** A Wellbeing status event would reveal that a student has a wellbeing request (§8) |
+
+A suggested flow:
+
+```text
+Requester creates ticket: "I can't sleep and I'm behind on everything"
+        │
+        ▼
+AI / fallback suggests   Route: Wellbeing  ·  service: wellbeing-advising
+        │
+        ▼
+Helpdesk shows the student our card for that service (name, whatFor, whoWillKnow)
+and a link to https://wellbeing-intake.vercel.app
+        │
+        ▼
+Ticket stores  wellbeing_service_slug = "wellbeing-advising"   ← the only thing you keep
+        │
+        ▼
+The student decides whether to contact Wellbeing — privately, on our site, under their own login
+```
+
+Two boundaries we ask you to respect:
+
+1. **Do not forward the ticket's subject or description to us.** We have no endpoint that accepts a
+   request on a student's behalf, deliberately: a wellbeing request must be written and submitted by
+   the student themselves.
+2. **A stored slug means "we suggested this service", nothing more.** Please do not show it, in the
+   agent queue or anywhere else, as "this student is a Wellbeing client" — you cannot know that, and
+   neither should an agent.
 
 ## 3. Checklist answers
 
