@@ -12,7 +12,9 @@ always one step away, and every view of request content is audited.
 - API contract (OpenAPI 3.1): [`openapi.yaml`](openapi.yaml)
 - Operations: [`RUNBOOK.md`](RUNBOOK.md)
 - A3 data and query design: [`docs/A3-Team16-Data-and-Query-Design.md`](docs/A3-Team16-Data-and-Query-Design.md) (PDF: `pnpm docs:pdf docs/A3-Team16-Data-and-Query-Design.md`)
-- A5 integration evidence template: [`docs/A5-Team16-Integration-Evidence.md`](docs/A5-Team16-Integration-Evidence.md)
+- A5 integration evidence: [`docs/A5-Team16-Integration-Evidence.md`](docs/A5-Team16-Integration-Evidence.md) — captures from the live deployment
+- Partner integration (Team 14 — Helpdesk): [`integration/team14/`](integration/team14) — contract, Postman collection, reference client, smoke test
+- **Live:** <https://wellbeing-intake.vercel.app> · API base `https://wellbeing-intake.vercel.app/api/v1`
 
 ## Stack
 
@@ -71,7 +73,7 @@ No Docker? Create a free Supabase project, put its URL and keys in `.env.local`,
 
 | Command | What it proves |
 | --- | --- |
-| `pnpm test` | Unit: payload allowlist, envelope, signing, fallback matcher (no database needed) |
+| `pnpm test` | Unit: payload allowlist, envelope, signing, fallback matcher, the AI path with the network stubbed (no database needed) |
 | `pnpm test:integration` | The seven mandated areas + event contract, AI fallback, platform conventions — real route handlers against the local stack. Reseeds first. |
 | `pnpm typecheck` · `pnpm lint` | Types and lint |
 | `pnpm check:openapi` | Every implemented route is in `openapi.yaml`, and vice versa |
@@ -87,11 +89,12 @@ Test areas → files: Request, Privacy, Role boundary, Booking, Cancellation, Ur
 | Direction | Partner | What | Where |
 | --- | --- | --- | --- |
 | We consume | Team 01 Identity | Access-token verification (`IDENTITY_MODE=campus`) | `src/lib/identity/adapter.ts` |
-| We provide | any team / Team 23 gateway | `GET /api/v1/services`, `GET /api/v1/health` | `openapi.yaml` |
+| We provide | **Team 14 Helpdesk (live)** · any team / Team 23 gateway | `GET /api/v1/services`, `GET /api/v1/health` | `openapi.yaml`, [`integration/team14/`](integration/team14) |
 | We send | Team 20 Notification Hub | `appointment.reminder`, `appointment.cancelled` — signed webhook, platform envelope | `src/lib/events/` |
 | We receive | Team 20 Notification Hub | `notification.delivered` / `notification.failed` receipts, idempotent on `eventId` | `src/app/api/v1/webhooks/notification-hub` |
 
-Until Team 20's endpoint exists, `HUB_WEBHOOK_URL` points at the built-in contract mock
+This table is the platform design. The deployment is paired with Team 14 only: identity runs in
+fixture mode and, until Team 20's endpoint exists, `HUB_WEBHOOK_URL` points at the built-in contract mock
 (`/api/v1/mock/hub`, only when `MOCK_HUB_ENABLED=true`), which verifies the signature and envelope
 over real HTTP. `PUT /api/v1/mock/hub {"fail": true}` with `Authorization: Bearer <DISPATCH_TOKEN>` simulates an
 outage for the degradation proof.

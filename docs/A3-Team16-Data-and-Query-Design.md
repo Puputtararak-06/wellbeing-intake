@@ -608,6 +608,6 @@ curl -X DELETE $BASE/slots/1a8b0b56-0f82-4c55-8f42-adb1d8e706a6 -H "Authorizatio
 | ---------------------------------------------------------------------------------------------------------------------------- | ------------------------ |
 | Migrations apply to a fresh PostgreSQL                                                                                       | Every CI run             |
 | Integration suite against the real database — privacy, role boundaries, concurrent booking, cancellation, escalation, events | **53 / 53 passing**      |
-| Unit tests (payload allowlist, signing, fallback matcher)                                                                    | **24 / 24 passing**      |
+| Unit tests (payload allowlist, signing, fallback matcher, AI path)                                                           | **34 / 34 passing**      |
 | `openapi.yaml` matches implemented routes                                                                                    | 21 operations, in sync   |
 | No server secret in the browser bundle                                                                                       | Clean (66 files scanned) |
