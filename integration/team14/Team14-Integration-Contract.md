@@ -10,7 +10,7 @@ are marked **N/A** with the reason.
 | --- | --- |
 | Provider | Team 16 — Private Wellbeing Intake & Booking |
 | Consumer | Team 14 — Helpdesk |
-| Full machine-readable contract | [`openapi.yaml`](../openapi.yaml) (OpenAPI 3.1) |
+| Full machine-readable contract | [`openapi.yaml`](openapi.yaml) (OpenAPI 3.1) |
 | Source | <https://github.com/TEERAPAT-SUKKASEM/wellbeing-intake> |
 | Contact | Teerapat Sukkasem (Team 16) |
 

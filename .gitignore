@@ -44,3 +44,6 @@ next-env.d.ts
 # Supabase CLI local state
 supabase/.temp/
 supabase/.branches/
+
+# Generated hand-over archive for Team 14 (rebuild from integration/team14)
+/integration/*.zip

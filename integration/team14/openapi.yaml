@@ -1,0 +1,761 @@
+openapi: 3.1.0
+info:
+  title: Wellbeing Intake & Booking API (Team 16)
+  version: 1.0.0
+  summary: Private requests, safe triage boundaries, and booking for campus health and wellbeing services.
+  description: |
+    Conventions (platform PRD §4, Team 16 PRD NFR-18/NFR-19):
+
+    - Every path is under the versioned base path `/api/v1`.
+    - Every request may send `X-Correlation-Id`; every response echoes one (generated if absent).
+    - User-facing calls carry an Identity access token (`Authorization: Bearer`) or the HttpOnly
+      session cookie derived from one. The dispatcher uses a scoped machine credential.
+    - **Non-enumeration:** a record that exists but is not visible to the caller returns exactly the
+      same `404 {"error":"not_found"}` as a record that does not exist. A role calling an operation
+      outside its permissions also receives that 404.
+    - Request content travels only in bodies, never in paths or query strings. Error responses never
+      echo submitted values — validation errors list field names only.
+    - Responses are `Cache-Control: no-store`.
+servers:
+  - url: https://{host}/api/v1
+    variables:
+      host:
+        default: localhost:3000
+tags:
+  - name: Public
+  - name: Student
+  - name: Practitioner
+  - name: Coordinator
+  - name: Integration
+
+paths:
+  /health:
+    get:
+      tags: [Public]
+      operationId: getHealth
+      summary: Liveness and readiness (content-free)
+      security: []
+      responses:
+        "200":
+          description: Healthy
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Health" }
+        "503":
+          description: Database unreachable
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Health" }
+
+  /services:
+    get:
+      tags: [Public]
+      operationId: listServices
+      summary: Seeded service catalogue for the service finder (no sign-in)
+      security: []
+      responses:
+        "200":
+          description: Catalogue
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [services]
+                properties:
+                  services:
+                    type: array
+                    items: { $ref: "#/components/schemas/Service" }
+
+  /finder/suggest:
+    post:
+      tags: [Public]
+      operationId: suggestServices
+      summary: "Help me choose: AI ranking with a deterministic keyword fallback"
+      description: >
+        Unauthenticated by design. The text is never stored or logged. The response contains only
+        seeded service ids and which mode answered — never model-written text.
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [text]
+              properties:
+                text: { type: string, minLength: 2, maxLength: 300 }
+      responses:
+        "200":
+          description: Ranked seeded service ids (possibly empty)
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [mode, serviceIds]
+                properties:
+                  mode: { type: string, enum: [ai, fallback] }
+                  serviceIds:
+                    type: array
+                    maxItems: 3
+                    items: { type: string, format: uuid }
+        "400": { $ref: "#/components/responses/ValidationFailed" }
+
+  /session:
+    post:
+      tags: [Public]
+      operationId: signInFixture
+      summary: Fixture-mode sign-in (demo accounts). 404 in campus identity mode.
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [email, password]
+              properties:
+                email: { type: string, format: email }
+                password: { type: string }
+      responses:
+        "200":
+          description: Signed in; session cookies set
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok: { type: boolean }
+                  accessToken: { type: string }
+                  expiresAt: { type: integer }
+        "401": { $ref: "#/components/responses/Error" }
+        "403": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "429": { $ref: "#/components/responses/Error" }
+    delete:
+      tags: [Public]
+      operationId: signOutFixture
+      summary: Sign out (clears session cookies)
+      security: []
+      responses:
+        "200":
+          description: Signed out
+        "404": { $ref: "#/components/responses/NotFound" }
+
+  /me:
+    get:
+      tags: [Student, Practitioner, Coordinator]
+      operationId: getMe
+      summary: The caller's single role
+      responses:
+        "200":
+          description: Caller
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [id, role, displayName]
+                properties:
+                  id: { type: string, format: uuid }
+                  role: { type: string, enum: [student, practitioner, coordinator] }
+                  displayName: { type: string }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+  /requests:
+    post:
+      tags: [Student]
+      operationId: createRequest
+      summary: Submit a private request (idempotent on submissionKey)
+      description: >
+        A replayed `submissionKey` returns the already-created request with `200` instead of
+        creating a duplicate. Any field outside this schema is rejected.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/NewRequest" }
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/RequestCreated" }
+        "200":
+          description: Replay of an existing submission — nothing new created
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/RequestCreated" }
+        "400": { $ref: "#/components/responses/ValidationFailed" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+  /requests/me:
+    get:
+      tags: [Student]
+      operationId: listMyRequests
+      summary: The caller's own requests and statuses (status only — no request content)
+      responses:
+        "200":
+          description: Own requests
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [requests]
+                properties:
+                  requests:
+                    type: array
+                    items: { $ref: "#/components/schemas/MyRequest" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+  /requests/{id}:
+    patch:
+      tags: [Practitioner]
+      operationId: updateRequestStatus
+      summary: Mark a request of the caller's own service Escalated or Closed
+      description: >
+        Submitted -> In review is never set by hand (it happens on the first audited content read),
+        and Handled is set only by booking. Content fields are rejected — content is immutable.
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [status]
+              properties:
+                status: { type: string, enum: [escalated, closed] }
+      responses:
+        "200":
+          description: Status changed; actor recorded
+        "400": { $ref: "#/components/responses/ValidationFailed" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409":
+          description: Transition not allowed from the current status
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+
+  /requests/{id}/content-views:
+    post:
+      tags: [Practitioner]
+      operationId: viewRequestContent
+      summary: Audited read of request content — the only path returning content to a non-owner
+      description: >
+        Each call writes exactly one content-free audit event in the same transaction as the read;
+        the first call also moves the request Submitted -> In review. POST because it always writes.
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      responses:
+        "201":
+          description: Content (view logged)
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/RequestContent" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+  /requests/{id}/slots:
+    get:
+      tags: [Student]
+      operationId: listSlotsForRequest
+      summary: Open slots for the service handling the caller's own In-review, non-acute request
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      responses:
+        "200":
+          description: Open slots (no practitioner identities)
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/SlotList" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+  /queue:
+    get:
+      tags: [Practitioner]
+      operationId: getQueue
+      summary: Own service's requests, most urgent first then oldest first — metadata only
+      responses:
+        "200":
+          description: Queue (never contains request content; loading it is not an audited view)
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [queue]
+                properties:
+                  queue:
+                    type: array
+                    items: { $ref: "#/components/schemas/QueueItem" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+  /coordinator/requests:
+    get:
+      tags: [Coordinator]
+      operationId: listRequestMetadata
+      summary: Operational metadata across all services, acute-flagged first — never content
+      responses:
+        "200":
+          description: Metadata rows
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [requests]
+                properties:
+                  requests:
+                    type: array
+                    items: { $ref: "#/components/schemas/RequestMetadata" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+  /practitioners/{id}/slots:
+    get:
+      tags: [Student, Practitioner]
+      operationId: listPractitionerSlots
+      summary: Open (future, unbooked) slots of one practitioner
+      description: >
+        Practitioner: own schedule only. Student: only with an In-review, non-acute request for that
+        practitioner's service. Anything else is the identical 404.
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      responses:
+        "200":
+          description: Open slots
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/SlotList" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+  /slots:
+    get:
+      tags: [Practitioner]
+      operationId: listMySlots
+      summary: The caller's own upcoming slots with booked/open state
+      responses:
+        "200":
+          description: Own schedule
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "404": { $ref: "#/components/responses/NotFound" }
+    post:
+      tags: [Practitioner]
+      operationId: publishSlot
+      summary: Publish one discrete future slot for the caller
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [startAt]
+              properties:
+                startAt: { type: string, format: date-time }
+      responses:
+        "201":
+          description: Slot published
+        "400": { $ref: "#/components/responses/ValidationFailed" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409":
+          description: The caller already has a slot at that time
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+
+  /slots/{id}:
+    delete:
+      tags: [Practitioner]
+      operationId: removeSlot
+      summary: Remove the caller's own slot — only while unbooked (checked atomically)
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      responses:
+        "200":
+          description: Removed
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409":
+          description: The slot holds a confirmed appointment
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+
+  /appointments:
+    post:
+      tags: [Student]
+      operationId: bookAppointment
+      summary: Book exactly one open slot against the caller's own request (atomic)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [requestId, slotId]
+              properties:
+                requestId: { type: string, format: uuid }
+                slotId: { type: string, format: uuid }
+      responses:
+        "201":
+          description: Confirmed; the request is now Handled
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [id, startAt, status]
+                properties:
+                  id: { type: string, format: uuid }
+                  startAt: { type: string, format: date-time }
+                  status: { type: string, const: confirmed }
+        "400": { $ref: "#/components/responses/ValidationFailed" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409":
+          description: >
+            `slot_taken` — the slot is no longer open (includes losing a concurrent race); carries
+            refreshed availability. `request_not_bookable` — the caller's own request is not In review
+            or carries the acute level.
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - type: object
+                    required: [error, slots]
+                    properties:
+                      error: { type: string, const: slot_taken }
+                      slots:
+                        type: array
+                        items: { $ref: "#/components/schemas/Slot" }
+                  - type: object
+                    required: [error]
+                    properties:
+                      error: { type: string, const: request_not_bookable }
+
+  /appointments/{id}/cancel:
+    post:
+      tags: [Student]
+      operationId: cancelAppointment
+      summary: Cancel the caller's own upcoming appointment — one action, no body, no justification
+      description: >
+        A state change, not a delete. The slot reopens immediately. If a reminder had already been
+        published, an `appointment.cancelled` retraction is written in the same transaction.
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      responses:
+        "200":
+          description: Cancelled
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+  /internal/events/dispatch:
+    post:
+      tags: [Integration]
+      operationId: dispatchEvents
+      summary: Enqueue due reminders and deliver pending outbox events (machine credential only)
+      security:
+        - machineToken: []
+      responses:
+        "200":
+          description: Counts only
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  enqueued: { type: integer }
+                  claimed: { type: integer }
+                  delivered: { type: integer }
+                  retrying: { type: integer }
+                  parked: { type: integer }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+
+  /webhooks/notification-hub:
+    post:
+      tags: [Integration]
+      operationId: receiveHubReceipt
+      summary: Inbound delivery receipts from the Notification Hub (Team 20)
+      description: >
+        Body is a platform event envelope of type `notification.delivered` or `notification.failed`
+        whose `data` carries only Team 16's opaque `reference`. The signature is verified over the raw
+        body (`X-Signature: sha256=<hmac>` of `<X-Signature-Timestamp>.<body>`). Consumption is
+        idempotent on `eventId`: a duplicate is acknowledged with `duplicate: true` and not reprocessed.
+      security:
+        - webhookSignature: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/EventEnvelope" }
+      responses:
+        "200":
+          description: Received
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [received, duplicate]
+                properties:
+                  received: { type: boolean }
+                  duplicate: { type: boolean }
+        "400": { $ref: "#/components/responses/Error" }
+        "401": { $ref: "#/components/responses/Error" }
+
+webhooks:
+  appointmentReminder:
+    post:
+      tags: [Integration]
+      operationId: sendAppointmentReminder
+      summary: Team 16 -> Notification Hub. Exactly one per appointment still confirmed at the lead time.
+      requestBody:
+        content:
+          application/json:
+            schema:
+              allOf:
+                - $ref: "#/components/schemas/EventEnvelope"
+                - type: object
+                  properties:
+                    type: { const: appointment.reminder }
+                    source: { const: wellbeing }
+                    data: { $ref: "#/components/schemas/ReminderData" }
+      responses:
+        "2XX":
+          description: Accepted. Any other status is retried with exponential backoff and the same eventId.
+  appointmentCancelled:
+    post:
+      tags: [Integration]
+      operationId: sendAppointmentCancelled
+      summary: Team 16 -> Notification Hub. Retraction, only when a reminder was already published.
+      requestBody:
+        content:
+          application/json:
+            schema:
+              allOf:
+                - $ref: "#/components/schemas/EventEnvelope"
+                - type: object
+                  properties:
+                    type: { const: appointment.cancelled }
+                    source: { const: wellbeing }
+                    data: { $ref: "#/components/schemas/CancelledData" }
+      responses:
+        "2XX":
+          description: Accepted
+
+security:
+  - identityToken: []
+  - sessionCookie: []
+
+components:
+  securitySchemes:
+    identityToken:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: Identity access token (Team 01 in campus mode; Supabase Auth in fixture mode)
+    sessionCookie:
+      type: apiKey
+      in: cookie
+      name: sb-session
+      description: HttpOnly, SameSite=Lax session cookie. Writes additionally require a same-origin Origin header.
+    machineToken:
+      type: http
+      scheme: bearer
+      description: Scoped machine credential for the dispatcher
+    webhookSignature:
+      type: apiKey
+      in: header
+      name: X-Signature
+      description: HMAC-SHA256 over "<X-Signature-Timestamp>.<raw body>" with the shared secret
+
+  parameters:
+    Id:
+      name: id
+      in: path
+      required: true
+      description: Opaque identifier
+      schema: { type: string, format: uuid }
+
+  responses:
+    NotFound:
+      description: Absent, not visible to the caller, or outside the caller's role — deliberately indistinguishable
+      content:
+        application/json:
+          schema:
+            type: object
+            required: [error]
+            properties:
+              error: { type: string, const: not_found }
+    Unauthenticated:
+      description: No valid credential
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Error" }
+    ValidationFailed:
+      description: Invalid input. Lists field names only — submitted values are never echoed.
+      content:
+        application/json:
+          schema:
+            type: object
+            required: [error]
+            properties:
+              error: { type: string, enum: [validation_failed, invalid_json] }
+              fields:
+                type: array
+                items: { type: string }
+    Error:
+      description: Error
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Error" }
+
+  schemas:
+    Error:
+      type: object
+      required: [error]
+      properties:
+        error: { type: string }
+    Health:
+      type: object
+      required: [status, service, version, database]
+      properties:
+        status: { type: string, enum: [ok, degraded] }
+        service: { type: string, const: wellbeing }
+        version: { type: string }
+        database: { type: string, enum: [up, down] }
+    Service:
+      type: object
+      required: [id, slug, name, whatFor, firstSession, whoWillKnow]
+      properties:
+        id: { type: string, format: uuid }
+        slug: { type: string }
+        name: { type: string }
+        whatFor: { type: string }
+        firstSession: { type: string }
+        whoWillKnow: { type: string }
+    TriageLevelId:
+      type: integer
+      enum: [1, 2, 3]
+      description: "1 Routine, 2 Soon, 3 Urgent (acute). Self-assessed by the student; never changed by anyone."
+    RequestStatus:
+      type: string
+      enum: [submitted, in_review, handled, escalated, closed]
+    NewRequest:
+      type: object
+      additionalProperties: false
+      required: [serviceId, structuredDescription, preferredTimes, triageLevelId, submissionKey]
+      properties:
+        serviceId: { type: string, format: uuid }
+        structuredDescription: { type: string, minLength: 1, maxLength: 500 }
+        freeText: { type: string, maxLength: 2000, description: Optional. Staff-readable. }
+        preferredTimes: { type: string, minLength: 1, maxLength: 300 }
+        triageLevelId: { $ref: "#/components/schemas/TriageLevelId" }
+        submissionKey: { type: string, format: uuid, description: Client-generated once per form; makes submission safe to retry. }
+    RequestCreated:
+      type: object
+      required: [id, status, triageLevelId, submittedAt, created, acute]
+      properties:
+        id: { type: string, format: uuid }
+        status: { $ref: "#/components/schemas/RequestStatus" }
+        triageLevelId: { $ref: "#/components/schemas/TriageLevelId" }
+        submittedAt: { type: string, format: date-time }
+        created: { type: boolean, description: false on an idempotent replay }
+        acute: { type: boolean, description: true => the client foregrounds emergency contacts and withholds booking }
+    MyRequest:
+      type: object
+      required: [id, serviceName, triageLevelId, status, submittedAt, bookable, appointment]
+      properties:
+        id: { type: string, format: uuid }
+        serviceName: { type: string }
+        triageLevelId: { $ref: "#/components/schemas/TriageLevelId" }
+        status: { $ref: "#/components/schemas/RequestStatus" }
+        submittedAt: { type: string, format: date-time }
+        bookable: { type: boolean }
+        appointment:
+          oneOf:
+            - type: "null"
+            - type: object
+              required: [id, startAt]
+              properties:
+                id: { type: string, format: uuid }
+                startAt: { type: [string, "null"], format: date-time }
+    QueueItem:
+      type: object
+      additionalProperties: false
+      required: [id, triageLevelId, status, submittedAt]
+      properties:
+        id: { type: string, format: uuid }
+        triageLevelId: { $ref: "#/components/schemas/TriageLevelId" }
+        status: { $ref: "#/components/schemas/RequestStatus" }
+        submittedAt: { type: string, format: date-time }
+    RequestMetadata:
+      type: object
+      additionalProperties: false
+      required: [id, serviceName, triageLevelId, acute, status, submittedAt, lastStatusChangeAt]
+      properties:
+        id: { type: string, format: uuid }
+        serviceName: { type: string }
+        triageLevelId: { $ref: "#/components/schemas/TriageLevelId" }
+        acute: { type: boolean }
+        status: { $ref: "#/components/schemas/RequestStatus" }
+        submittedAt: { type: string, format: date-time }
+        lastStatusChangeAt: { type: string, format: date-time }
+    RequestContent:
+      type: object
+      required: [id, structuredDescription, freeText, preferredTimes, triageLevelId, status, submittedAt]
+      properties:
+        id: { type: string, format: uuid }
+        structuredDescription: { type: string }
+        freeText: { type: [string, "null"] }
+        preferredTimes: { type: string }
+        triageLevelId: { $ref: "#/components/schemas/TriageLevelId" }
+        status: { $ref: "#/components/schemas/RequestStatus" }
+        submittedAt: { type: string, format: date-time }
+    Slot:
+      type: object
+      required: [id, startAt]
+      properties:
+        id: { type: string, format: uuid }
+        startAt: { type: string, format: date-time }
+    SlotList:
+      type: object
+      required: [slots]
+      properties:
+        slots:
+          type: array
+          items: { $ref: "#/components/schemas/Slot" }
+    EventEnvelope:
+      type: object
+      additionalProperties: false
+      required: [eventId, type, occurredAt, source, subject, data]
+      properties:
+        eventId: { type: string, format: uuid, description: Stable across retries; consumers de-duplicate on it. }
+        type: { type: string }
+        occurredAt: { type: string, format: date-time }
+        source: { type: string }
+        subject: { type: string }
+        data: { type: object }
+    ReminderData:
+      type: object
+      additionalProperties: false
+      required: [appointmentAt, message, reference]
+      properties:
+        appointmentAt: { type: string, format: date-time }
+        message: { type: string, const: You have an appointment. }
+        reference: { type: string, format: uuid, description: Opaque. Never a service, practitioner, reason or urgency. }
+    CancelledData:
+      type: object
+      additionalProperties: false
+      required: [reference]
+      properties:
+        reference: { type: string, format: uuid }

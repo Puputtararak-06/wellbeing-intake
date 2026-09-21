@@ -1,0 +1,191 @@
+{
+  "info": {
+    "name": "Wellbeing (Team 16) — public API for Team 14",
+    "description": "Contract: Team14-Integration-Contract.md. Public, no authentication. Call from your server: no CORS headers are sent.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "https://wellbeing-intake.vercel.app/api/v1"
+    },
+    {
+      "key": "correlationId",
+      "value": "team14-a5-0001"
+    }
+  ],
+  "item": [
+    {
+      "name": "1 List services (valid request)",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "X-Correlation-Id",
+            "value": "{{correlationId}}"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/services",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "services"
+          ]
+        },
+        "description": "The whole catalogue. Store `slug` on your ticket, never `id` (ids change when Wellbeing reseeds)."
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"200\", () => pm.response.to.have.status(200));",
+              "pm.test(\"correlation id echoed\", () => pm.expect(pm.response.headers.get(\"X-Correlation-Id\")).to.eql(pm.collectionVariables.get(\"correlationId\")));",
+              "const slugs = pm.response.json().services.map(s => s.slug).sort();",
+              "pm.test(\"four stable slugs\", () => pm.expect(slugs).to.eql([\"counselling\",\"health-clinic\",\"physiotherapy\",\"wellbeing-advising\"]));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "2 Wrong method (invalid request)",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "X-Correlation-Id",
+            "value": "{{correlationId}}"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/services",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "services"
+          ]
+        },
+        "description": "Only GET is supported."
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"405\", () => pm.response.to.have.status(405));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "3 Protected endpoint without a token (outside this contract)",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "X-Correlation-Id",
+            "value": "{{correlationId}}"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/requests/me",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "requests",
+            "me"
+          ]
+        },
+        "description": "Shown only to demonstrate an authentication failure. Student data is never shared with Helpdesk."
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"401\", () => pm.response.to.have.status(401));",
+              "pm.test(\"stable error code\", () => pm.expect(pm.response.json().error).to.eql(\"unauthenticated\"));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "4 Unknown path",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "X-Correlation-Id",
+            "value": "{{correlationId}}"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/services/dentistry",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "services",
+            "dentistry"
+          ]
+        },
+        "description": "There is no by-slug endpoint: fetch the list and match on `slug`."
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"404\", () => pm.response.to.have.status(404));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Health",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "X-Correlation-Id",
+            "value": "{{correlationId}}"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/health",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "health"
+          ]
+        },
+        "description": "200 ok / 503 degraded."
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"200\", () => pm.response.to.have.status(200));",
+              "pm.test(\"database up\", () => pm.expect(pm.response.json().database).to.eql(\"up\"));"
+            ]
+          }
+        }
+      ]
+    }
+  ]
+}
