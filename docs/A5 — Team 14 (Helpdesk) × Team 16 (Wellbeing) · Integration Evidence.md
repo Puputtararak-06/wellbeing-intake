@@ -48,9 +48,9 @@ _Required: partner URL, request timestamp, response body screenshot._
 
 **Response body screenshot** (Team 14's Postman): the catalogue, starting `counselling` → `health-clinic` → `physiotherapy`.
 
-![Team 14's Postman: GET services with X-Correlation-Id team14-a5-0001, 200 OK, catalogue in the body](evidence/2-partner-postman-team14-a5-0001.png)
+![Team 14's Postman: GET services with X-Correlation-Id team14-a5-0001, 200 OK, catalogue in the body](https://raw.githubusercontent.com/TEERAPAT-SUKKASEM/wellbeing-intake/main/docs/evidence/2-partner-postman-team14-a5-0001.png)
 
-![Team 14's Postman environment: wellbeing_base and helpdesk_base](evidence/2-partner-postman-environment.png)
+![Team 14's Postman environment: wellbeing_base and helpdesk_base](https://raw.githubusercontent.com/TEERAPAT-SUKKASEM/wellbeing-intake/main/docs/evidence/2-partner-postman-environment.png)
 
 **What Helpdesk does with it:** suggests a relevant Wellbeing service on a ticket and stores only the stable `wellbeing_service_slug` — never the UUID `id` (it changes when Wellbeing reseeds), and never any case, appointment or status, which Wellbeing does not share.
 
@@ -91,7 +91,7 @@ _Required: your endpoint URL, internal request log, partner confirmation._
 
 The log search for `team14-a5-0001` returns this one request only. `role: "visitor"`: the endpoint is public, so Helpdesk receives exactly what a signed-out visitor receives.
 
-![Vercel log: GET /api/v1/services, status 200, cid team14-a5-0001, User-Agent PostmanRuntime](evidence/2-provider-log-team14-a5-0001.png)
+![Vercel log: GET /api/v1/services, status 200, cid team14-a5-0001, User-Agent PostmanRuntime](https://raw.githubusercontent.com/TEERAPAT-SUKKASEM/wellbeing-intake/main/docs/evidence/2-provider-log-team14-a5-0001.png)
 
 **Partner confirmation:** Team 14's Postman capture in §1 — same URL, same `team14-a5-0001`, same `200`.
 
@@ -110,7 +110,7 @@ The log search for `team14-a5-0001` returns this one request only. `role: "visit
 }
 ```
 
-![Vercel log: request from Team 14's backend proxy](evidence/2-provider-log-team14-backend-proxy.png)
+![Vercel log: request from Team 14's backend proxy](https://raw.githubusercontent.com/TEERAPAT-SUKKASEM/wellbeing-intake/main/docs/evidence/2-provider-log-team14-backend-proxy.png)
 
 Checked from Team 16's side the same day: `GET https://helpdesk-api.team-helpdesk.workers.dev/wellbeing/services` → `200`, `"degraded": false`, all four services.
 
@@ -166,9 +166,9 @@ Wellbeing sends Helpdesk **no event**. Wellbeing's only outbound events, `appoin
 ]
 ```
 
-![Vercel log: signature verified, status 200](evidence/3-log-valid.png)
+![Vercel log: signature verified, status 200](https://raw.githubusercontent.com/TEERAPAT-SUKKASEM/wellbeing-intake/main/docs/evidence/3-log-valid.png)
 
-![Vercel log: signature rejected, reason mismatch, status 401, no outgoing requests](evidence/3-log-tampered.png)
+![Vercel log: signature rejected, reason mismatch, status 401, no outgoing requests](https://raw.githubusercontent.com/TEERAPAT-SUKKASEM/wellbeing-intake/main/docs/evidence/3-log-tampered.png)
 
 ---
 
@@ -220,9 +220,9 @@ The receiver here is Team 16's built-in contract mock hub (`/api/v1/mock/hub`), 
 ]
 ```
 
-![Vercel log, sender side: booking 201 and the webhook line with outcome delivered](evidence/4-log-booking-sender.png)
+![Vercel log, sender side: booking 201 and the webhook line with outcome delivered](https://raw.githubusercontent.com/TEERAPAT-SUKKASEM/wellbeing-intake/main/docs/evidence/4-log-booking-sender.png)
 
-![Vercel log, receiver side: the mock hub accepted the same eventId](evidence/4-log-mock-hub-receiver.png)
+![Vercel log, receiver side: the mock hub accepted the same eventId](https://raw.githubusercontent.com/TEERAPAT-SUKKASEM/wellbeing-intake/main/docs/evidence/4-log-mock-hub-receiver.png)
 
 ---
 
@@ -241,7 +241,7 @@ _Required: Req 1 vs Req 2 payloads, showing DB proof of single creation._
 
 Req 1 is the screenshot in §1; Req 2:
 
-![Team 14's Postman: the repeated GET with team14-a5-idem-check, 200 OK, the same catalogue](evidence/5-team14-postman-idem-check.png)
+![Team 14's Postman: the repeated GET with team14-a5-idem-check, 200 OK, the same catalogue](https://raw.githubusercontent.com/TEERAPAT-SUKKASEM/wellbeing-intake/main/docs/evidence/5-team14-postman-idem-check.png)
 
 **DB proof of single creation — nothing is created at all.** The provider's log for Req 1 (§2) shows the only outgoing call the request made: one `GET` to the database (Vercel's _External APIs_ panel) — a single `SELECT`, no write. A `GET` on this API cannot create a row however many times it is repeated, and Helpdesk stores only a slug, so repeating the call creates nothing on either side.
 
@@ -270,7 +270,7 @@ DB proof: `select count(*) from request where submission_key = '19267117-022d-41
 
 **5b. The same inbound event twice** (the event of §3): first delivery `{"received":true,"duplicate":false}`, second `{"received":true,"duplicate":true}`; `inbound_event` holds **one** row for that `eventId` — its primary key makes a second insert impossible.
 
-![Vercel log: the duplicate delivery, signature verified, duplicate true](evidence/3-log-duplicate.png)
+![Vercel log: the duplicate delivery, signature verified, duplicate true](https://raw.githubusercontent.com/TEERAPAT-SUKKASEM/wellbeing-intake/main/docs/evidence/3-log-duplicate.png)
 
 ---
 
@@ -289,9 +289,9 @@ _Required: breakage timestamp, fallback JSON output, automatic recovery log._
 | Recovery                               | `TODO Team 14 — time of the recovered call` | URL restored → `200`, `services [4]`, `"degraded": false`; no repair beyond restoring the configuration |
 | First call reaching the provider again | `2026-09-21T12:11:39.631Z` (19:11:38 UTC+7) | Team 16's log, cid `team14-a5-0003`                                                                     |
 
-![Team 14's proxy during the simulated outage: 200 with services empty and degraded true](evidence/6-team14-proxy-degraded-true.png)
+![Team 14's proxy during the simulated outage: 200 with services empty and degraded true](https://raw.githubusercontent.com/TEERAPAT-SUKKASEM/wellbeing-intake/main/docs/evidence/6-team14-proxy-degraded-true.png)
 
-![Team 14's proxy after recovery: services 4, degraded false](evidence/6-team14-proxy-recovered.png)
+![Team 14's proxy after recovery: services 4, degraded false](https://raw.githubusercontent.com/TEERAPAT-SUKKASEM/wellbeing-intake/main/docs/evidence/6-team14-proxy-recovered.png)
 
 **Recovery log, from the provider's side.** The outage never reaches Wellbeing by design, so Wellbeing's log can only show the recovery — and it does:
 
@@ -308,7 +308,7 @@ _Required: breakage timestamp, fallback JSON output, automatic recovery log._
 }
 ```
 
-![Vercel log: GET /api/v1/services, status 200, cid team14-a5-0003](evidence/2-provider-log-team14-a5-0003.png)
+![Vercel log: GET /api/v1/services, status 200, cid team14-a5-0003](https://raw.githubusercontent.com/TEERAPAT-SUKKASEM/wellbeing-intake/main/docs/evidence/2-provider-log-team14-a5-0003.png)
 
 ### Team 16 — two dependencies break, the product keeps working, both recover by themselves
 
@@ -353,9 +353,9 @@ After recovery — the model ranks a second relevant service:
 
 In both modes the response carries only seeded service IDs; model-written text never reaches a screen. The log lines carry mode, reason and latency only — never the typed text.
 
-![Vercel log during the LLM outage: mode fallback, reason ai_unavailable](evidence/6b-log-during-1.png)
+![Vercel log during the LLM outage: mode fallback, reason ai_unavailable](https://raw.githubusercontent.com/TEERAPAT-SUKKASEM/wellbeing-intake/main/docs/evidence/6b-log-during-1.png)
 
-![Vercel log after recovery: mode ai](evidence/6b-log-recovered.png)
+![Vercel log after recovery: mode ai](https://raw.githubusercontent.com/TEERAPAT-SUKKASEM/wellbeing-intake/main/docs/evidence/6b-log-recovered.png)
 
 ---
 
