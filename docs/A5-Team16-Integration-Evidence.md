@@ -2,8 +2,8 @@
 
 **Team:** 16 — Wellbeing · **Pod:** 4 — Student Support
 **Deployed base URL:** `https://wellbeing-intake.vercel.app/api/v1` (Vercel, region `sin1`) · database: Supabase project `jtwrgfcmfghfklddyatv` (`ap-southeast-1`)
-**Commit / deploy ID evidenced:** `818596e` (reported by `GET /health` as `"version":"818596e"`)
-**Evidence captured on:** 2026-09-21 05:33–05:53 UTC+7. Timestamps below are ISO-8601 **UTC** (`Z`), exactly as captured; add 7 h for local time.
+**Commit / deploy ID evidenced:** `818596e` for §3–§6a and `73b18dc` for §6b (each reported by `GET /health` as `"version"` at capture time)
+**Evidence captured on:** 2026-09-21 05:33–07:35 UTC+7. Timestamps below are ISO-8601 **UTC** (`Z`), exactly as captured; add 7 h for local time.
 **Captured by:** Teerapat Sukkasem (6731503015), Team 16
 
 > **Scope of this document.** Team 16 is paired with **one** partner: **Team 14 — Helpdesk**. Team 14
@@ -36,7 +36,7 @@
 | 3 | Webhook receiver | — (self-run) | FR-24 (PRD revision 3), `POST /webhooks/notification-hub` | **Done (self-run)** |
 | 4 | Webhook sender | — (contract mock hub) | FR-18, NFR-17, §11.5 | **Done (mock hub)** |
 | 5 | Idempotency | — (ours) | K-17 `submission_key`; `eventId` | **Done** — 5a and 5b |
-| 6 | Degradation | — (contract mock hub / LLM) | K-18/K-19, FR-23, BR-24 | **6a done** · 6b fallback captured; AI mode not enabled (no approved key) |
+| 6 | Degradation | — (contract mock hub / LLM) | K-18/K-19, FR-23, BR-24 | **Done** — 6a (hub outage) and 6b (LLM rate-limited), both with automatic recovery |
 
 ---
 
@@ -258,18 +258,38 @@ The appointment was never affected by the outage:
 
 ### 6b. LLM unavailable (AI capability with deterministic fallback — FR-23, BR-24)
 
-**How it was broken:** the AI capability is switched off on the deployment (`AI_FINDER_ENABLED=false`, no `LLM_API_KEY`), because the course has not yet approved a zero-cost model/key (PRD C-04, BR-24). The helper is designed to take this same fallback path on an LLM error, a 3-second timeout, invalid output or an exhausted daily budget.
+**Dependency:** Groq (`openai/gpt-oss-20b`), the LLM behind the "help me choose" helper. Deploy evidenced here: `73b18dc`.
+
+**How it was broken:** Groq's free tier allows 8,000 tokens per minute. We used that allowance up with one oversized request sent **from outside the app** with the same API key, so Groq answered every further request — including our deployed app's — with `429 rate_limit_exceeded` (`retry-after: 55`). This is a real provider-side failure, not a flag flipped in our own code.
 
 | Moment | Timestamp (UTC) | Evidence |
 |---|---|---|
-| AI unavailable — helper still answers | `2026-09-20T23:09:24Z` | cid `a5-6b-fallback` → `200`, `mode:"fallback"` (below) |
-| Recovery to `mode:"ai"` | **not captured** | Needs an approved key. We do not claim it. The automated suite (`tests/integration/platform.test.ts`, green in CI) covers three fallback triggers: AI switched off, AI on with no key, and daily budget exhausted. The timeout and invalid-output triggers are implemented but not yet tested. |
+| Before — AI healthy | `2026-09-21T00:33:29Z` | cid `a5-6b-before` → `200`, `mode:"ai"`, two services ranked |
+| Breakage | `2026-09-21T00:33:30Z` | burn request 1 → `200`, 156 tokens left; burn request 2 → **`429 rate_limit_exceeded`**, `retry-after: 55` |
+| During — helper still answers | `2026-09-21T00:33:32Z` | cid `a5-6b-during` and `a5-6b-during2` → **`200`**, `mode:"fallback"` (below) |
+| Automatic recovery | `2026-09-21T00:34:41Z` | cid `a5-6b-recovered` → `200`, `mode:"ai"` again — 69 s later, when Groq's window reset. No redeploy, no configuration change, no action by anyone. |
 
-**Fallback JSON output** of `POST /api/v1/finder/suggest` with body `{"text":"trouble sleeping before exams"}` — a ranked list of seeded service IDs from the deterministic keyword matcher; no model-written text:
+Helper log lines: `TODO screenshot — Vercel → Logs → search "a5-6b-during" (mode fallback) and "a5-6b-recovered" (mode ai)`
+
+Request body in every call: `{"text":"trouble sleeping before exams"}`.
+
+**Fallback JSON output** during the outage — a ranked list of seeded service IDs from the deterministic keyword matcher; the visitor gets an answer, not an error:
 
 ```json
 {"mode":"fallback","serviceIds":["6c940476-f362-4090-b96a-40d75ed2564b"]}
 ```
+
+Same call after recovery — the model ranks a second relevant service the keyword matcher did not find:
+
+```json
+{"mode":"ai","serviceIds":["6c940476-f362-4090-b96a-40d75ed2564b","689dfeea-2a43-4aa9-87b4-55cfacaf29bc"]}
+```
+
+In both modes the response carries **only seeded service IDs** — model-written text never reaches a screen (BR-24).
+
+**Also captured earlier** (`2026-09-20T23:09:24Z`, cid `a5-6b-fallback`, deploy `818596e`): with the capability switched off entirely (`AI_FINDER_ENABLED=false`, no key) the same call returned the same `mode:"fallback"` answer.
+
+**Automated coverage of the fallback triggers:** `tests/unit/finder-ai.test.ts` stubs the network and asserts a fallback on HTTP 500, HTTP 429, a timeout, a network failure, free text instead of JSON, JSON of the wrong shape, an id outside the catalogue, and more than three ids; `tests/integration/platform.test.ts` covers AI switched off, no key, and daily budget exhausted. All green in CI.
 
 ---
 
