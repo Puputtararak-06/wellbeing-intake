@@ -2,8 +2,8 @@
 
 **Team:** 16 — Wellbeing · **Pod:** 4 — Student Support
 **Deployed base URL:** `https://wellbeing-intake.vercel.app/api/v1` (Vercel, region `sin1`) · database: Supabase project `jtwrgfcmfghfklddyatv` (`ap-southeast-1`)
-**Commit / deploy ID evidenced:** `818596e` for §5a and §6a, `73b18dc` for §6b, `27d4920` for §3, §4 and §5b (each reported by `GET /health` as `"version"` at capture time)
-**Evidence captured on:** 2026-09-21 05:33–07:35 UTC+7. Timestamps below are ISO-8601 **UTC** (`Z`), exactly as captured; add 7 h for local time.
+**Commit / deploy ID evidenced:** `818596e` for §5a and §6a, `73b18dc` for §6b, `27d4920` for §3, §4 and §5b, `f2b620c` for §2 (each reported by `GET /health` as `"version"` at capture time)
+**Evidence captured on:** 2026-09-21, 05:33–07:56 UTC+7 (§3–§6) and 18:19–18:35 UTC+7 (§2). Timestamps below are ISO-8601 **UTC** (`Z`), exactly as captured; add 7 h for local time.
 **Captured by:** Teerapat Sukkasem (6731503015), Team 16
 
 > **Scope of this document.** Team 16 is paired with **one** partner: **Team 14 — Helpdesk**. Team 14
@@ -34,7 +34,7 @@
 | # | Proof | Partner team | Our PRD reference | Status |
 |---|-------|--------------|-------------------|--------|
 | 1 | Consumer | — (not paired with Team 01) | BR-26, FR-03 | **Out of scope** — identity runs in fixture mode |
-| 2 | Provider | **Team 14 — Helpdesk** | §11.1 `GET /services`, NFR-18 | TODO — Team 14 runs the one-line `curl` in §2 and sends a screenshot |
+| 2 | Provider | **Team 14 — Helpdesk** | §11.1 `GET /services`, NFR-18 | **Done** — provider log captured for `team14-a5-0001`; Team 14's own screenshot and contact name still to add |
 | 3 | Webhook receiver | — (self-run) | FR-24 (PRD revision 3), `POST /webhooks/notification-hub` | **Done (self-run)** |
 | 4 | Webhook sender | — (contract mock hub) | FR-18, NFR-17, §11.5 | **Done (mock hub)** |
 | 5 | Idempotency | — (ours) | K-17 `submission_key`; `eventId` | **Done** — 5a and 5b |
@@ -60,26 +60,47 @@ Our only partner, Team 14 — Helpdesk, exposes no API that this product needs t
 
 ## 2. Provider Proof — a partner calls our API
 
-**What this proves:** another team successfully consumes a Team 16 endpoint.
+**What this proves:** Team 14 — Helpdesk successfully consumes a Team 16 endpoint, both by hand (Postman) and from their own deployed backend.
 
-Recommended endpoint: `GET /api/v1/services` — public, contains only the seeded service catalogue, so a partner can call it without any privacy exposure. Natural callers: Team 23 (gateway routing + `GET /api/v1/health`), or Team 13 Advising / Team 14 Helpdesk linking students to wellbeing services.
+Endpoint: `GET /api/v1/services` — public, returns only the seeded service catalogue, so a partner can call it with no privacy exposure. The agreed contract is [`integration/team14/Team14-Integration-Contract.md`](../integration/team14/Team14-Integration-Contract.md) (v1.2): Helpdesk uses the catalogue to suggest a Wellbeing service on a ticket and stores only the stable `slug`. No student data crosses the boundary in either direction, and no ticket text is sent to us.
+
+### 2a. The evidenced call — correlation ID `team14-a5-0001`
 
 | Field | Value |
 |---|---|
 | Our endpoint URL | `https://wellbeing-intake.vercel.app/api/v1/services` |
 | Calling partner | Team 14 — Helpdesk (`TODO contact name`) |
-| Command for the partner | `curl -i https://wellbeing-intake.vercel.app/api/v1/services -H "X-Correlation-Id: team14-a5-0001"` |
-| Request timestamp | `TODO` |
-| Correlation ID | `TODO` (ask the partner to send one; it must match our log line) |
-| HTTP status returned | `TODO` |
+| Partner's client | Postman (`User-Agent: PostmanRuntime/7.56.1`) |
+| Request timestamp | `2026-09-21T11:35:49.718Z` — 18:35:48 UTC+7 (server time, from our log) |
+| Correlation ID | `team14-a5-0001` — sent by Team 14, echoed in our response, written to our log |
+| HTTP status returned | `200` |
+| Deploy evidenced | `f2b620c`, Vercel production, received in Singapore (`sin1`) |
 
-**Internal request log** (our side — Vercel function log line showing method, path, status, correlation ID, caller; no bodies):
+**Internal request log** (Vercel function log line — method, path, status, correlation ID, caller role; no body):
 
+```json
+{ "t": "2026-09-21T11:35:49.718Z", "svc": "wellbeing", "cid": "team14-a5-0001", "method": "GET", "path": "/api/v1/services", "status": 200, "role": "visitor", "ms": 476 }
 ```
-TODO
+
+`role: "visitor"` is correct: the endpoint is public, so Team 14 presents no credential and receives exactly what any signed-out visitor receives.
+
+![Vercel log: GET /api/v1/services, status 200, cid team14-a5-0001, User-Agent PostmanRuntime](evidence/2-provider-log-team14-a5-0001.png)
+
+**Partner confirmation** (Team 14's own screenshot of the same request — their request, the `200` response, and `X-Correlation-Id: team14-a5-0001` echoed back): `TODO ![partner-confirmation](evidence/2-partner-confirmation.png)`
+
+### 2b. Their deployed backend calling us — not just a manual test
+
+Team 14's Helpdesk API (`https://helpdesk-api.team-helpdesk.workers.dev`, Cloudflare Workers) proxies our catalogue at `GET /wellbeing/services`. Team 14's evidence plan states that this proxy generates its own random correlation ID for every call; the log line below carries an ID of exactly that kind (`team14-a5-<uuid>`), which is how we attribute it to their backend rather than to a person:
+
+```json
+{ "t": "2026-09-21T11:19:24.677Z", "svc": "wellbeing", "cid": "team14-a5-c006d636-c04e-4d40-9653-2c1138a03ad4", "method": "GET", "path": "/api/v1/services", "status": 200, "role": "visitor", "ms": 371 }
 ```
 
-**Partner confirmation** (screenshot of their message, their log, or their UI rendering our data — with their name and the date visible): `TODO ![partner-confirmation](evidence/2-partner-confirmation.png)`
+This request shows no browser or Postman user agent: it is a server-to-server call from their Worker, which is how the contract asks them to call us (we send no CORS headers).
+
+![Vercel log: GET /api/v1/services, status 200, cid generated by Team 14's backend proxy](evidence/2-provider-log-team14-backend-proxy.png)
+
+Checked from our side on 2026-09-21: `GET https://helpdesk-api.team-helpdesk.workers.dev/wellbeing/services` → `200`, `"degraded": false`, all four services (`counselling`, `health-clinic`, `physiotherapy`, `wellbeing-advising`).
 
 ---
 
