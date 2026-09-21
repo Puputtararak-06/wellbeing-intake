@@ -1,6 +1,6 @@
 # API Contract — Wellbeing (Team 16) → Helpdesk (Team 14)
 
-**For:** A5 cross-team integration · **Contract version:** 1.1 (2026-09-21) — adds §2.1 after reading the Helpdesk PRD v1.0; the API itself is unchanged · **Status:** proposed by Team 16, awaiting Team 14 review
+**For:** A5 cross-team integration · **Contract version:** 1.2 (2026-09-21) — 1.1 added §2.1 (fit with the Helpdesk PRD); 1.2 adds the evidence labels and the 405/404 note in §6. The API itself is unchanged since 1.0 · **Status:** proposed by Team 16, awaiting Team 14 review
 
 This answers every item in Team 14's *A5 Integration Preparation* checklist (§18). Every value below
 was verified against the live system — nothing here is planned or assumed. Items that do not exist
@@ -191,6 +191,26 @@ contains spaces or `#`) is silently replaced with a random UUID.
 | `team14-a5-0001` | `team14-a5-0001` |
 | `probe-1` (7 characters) | a random UUID |
 | `T14 ticket #5` (space, `#`) | a random UUID |
+
+**Where the ID is echoed.** On every response produced by our API code — `200`, `401`, `500`. The two
+framework-level responses, **`405` (wrong method) and `404` (unknown path), never reach our code**:
+they carry no `X-Correlation-Id` and leave no structured log line on our side. Evidence them from your
+side only.
+
+**Suggested labels for the A5 evidence run** — one per test, so each screenshot pairs with exactly
+one of our log lines:
+
+| Label | Your test | Request | We can show a matching log line |
+| --- | --- | --- | --- |
+| `team14-a5-0001` | 1 — valid request (**the Provider / Consumer proof**) | `GET /services` | Yes |
+| `team14-a5-0002` | health check | `GET /health` | Yes |
+| `team14-a5-0003` | 8 — recovery, the first successful call after your simulated outage | `GET /services` | Yes |
+| — | 2 — invalid method | `POST /services` → `405` | No (framework-level) |
+| — | 4 — unknown resource | `GET /services/dentistry` → `404` | No (framework-level) |
+| — | 7 — partner failure | never reaches us (wrong host / timeout) | No — by definition |
+
+Only `team14-a5-0001` is required. Use each label **once**: two requests with the same label give two
+log lines and neither team can tell which screenshot belongs to which.
 
 ## 7. Status codes and errors
 
