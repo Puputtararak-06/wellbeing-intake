@@ -86,6 +86,8 @@ Endpoint: `GET /api/v1/services` — public, returns only the seeded service cat
 
 ![Vercel log: GET /api/v1/services, status 200, cid team14-a5-0001, User-Agent PostmanRuntime](evidence/2-provider-log-team14-a5-0001.png)
 
+The log search for `team14-a5-0001` returns exactly one request. Team 14's optional labels `team14-a5-0002` (health check) and `team14-a5-0003` (recovery call) were searched for in the same hour and returned no request: they were not sent, so nothing is claimed for them.
+
 **Partner confirmation** (Team 14's own screenshot of the same request — their request, the `200` response, and `X-Correlation-Id: team14-a5-0001` echoed back): `TODO ![partner-confirmation](evidence/2-partner-confirmation.png)`
 
 ### 2b. Their deployed backend calling us — not just a manual test
