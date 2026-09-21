@@ -269,7 +269,21 @@ The appointment was never affected by the outage:
 | During — helper still answers | `2026-09-21T00:33:32Z` | cid `a5-6b-during` and `a5-6b-during2` → **`200`**, `mode:"fallback"` (below) |
 | Automatic recovery | `2026-09-21T00:34:41Z` | cid `a5-6b-recovered` → `200`, `mode:"ai"` again — 69 s later, when Groq's window reset. No redeploy, no configuration change, no action by anyone. |
 
-Helper log lines: `TODO screenshot — Vercel → Logs → search "a5-6b-during" (mode fallback) and "a5-6b-recovered" (mode ai)`
+**Server-side log lines** (Vercel → Logs, production deployment `dpl_9jxBmBLxEWr5BPq9fgrA953Uc…`, region `sin1`). Each screenshot shows our own structured log line and, in Vercel's *External APIs* panel, the outbound `POST api.groq.com/openai/v1/chat/completions` made by that request:
+
+| cid | Server time (UTC) | `mode` | `reason` | `ms` |
+|---|---|---|---|---|
+| `a5-6b-during` | `2026-09-21T00:33:35.913Z` | `fallback` | `ai_unavailable` | 112 — Groq refused at once |
+| `a5-6b-during2` | `2026-09-21T00:33:36.381Z` | `fallback` | `ai_unavailable` | 127 |
+| `a5-6b-recovered` | `2026-09-21T00:34:45.502Z` | `ai` | `null` | 920 — a real model answer |
+
+The log lines carry mode, reason, match count and latency only — never the typed text (NFR-07, NFR-10). Server times are about 4 s later than the client timestamps in the table above: the capturing PC's clock runs slightly behind.
+
+![Vercel log for cid a5-6b-during: mode fallback, reason ai_unavailable, 112 ms](evidence/6b-log-during-1.png)
+
+![Vercel log for cid a5-6b-during2: mode fallback, reason ai_unavailable, 127 ms](evidence/6b-log-during-2.png)
+
+![Vercel log for cid a5-6b-recovered: mode ai, 920 ms](evidence/6b-log-recovered.png)
 
 Request body in every call: `{"text":"trouble sleeping before exams"}`.
 
